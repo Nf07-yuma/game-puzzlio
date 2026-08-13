@@ -6,7 +6,17 @@ on:
       - main
       - master
       - "claude/**"
+    paths: &app-paths
+      - "lib/**"
+      - "test/**"
+      - "android/**"
+      - "ios/**"
+      - "assets/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/ci.yml"
   pull_request:
+    paths: *app-paths
   workflow_dispatch:
 
 env:
