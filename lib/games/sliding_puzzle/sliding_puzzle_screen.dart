@@ -21,6 +21,7 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
   final Random _random = Random();
 
   late SlidingPuzzleBoard _board;
+  late SlidingPuzzleBoard _initialBoard;
   int _moves = 0;
   int _elapsedSeconds = 0;
   int? _bestTimeSeconds;
@@ -59,8 +60,12 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
       return;
     }
     final tiles = (saved['tiles'] as List).cast<int>();
+    final initialTilesRaw = saved['initialTiles'] as List?;
     setState(() {
       _board = SlidingPuzzleBoard(tiles);
+      _initialBoard = initialTilesRaw != null
+          ? SlidingPuzzleBoard(initialTilesRaw.cast<int>())
+          : _board;
       _moves = saved['moves'] as int;
       _elapsedSeconds = saved['elapsedSeconds'] as int;
     });
@@ -69,6 +74,7 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
   Future<void> _saveGame() async {
     await GameStateStorage.instance.save(_gameId, {
       'tiles': _board.tiles,
+      'initialTiles': _initialBoard.tiles,
       'moves': _moves,
       'elapsedSeconds': _elapsedSeconds,
     });
@@ -76,12 +82,18 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
 
   void _resetBoard() {
     _timer?.cancel();
+    final board = SlidingPuzzleBoard.shuffled(_random);
     setState(() {
-      _board = SlidingPuzzleBoard.shuffled(_random);
+      _board = board;
+      _initialBoard = board;
       _moves = 0;
       _elapsedSeconds = 0;
       _solved = false;
     });
+    _startTimer();
+  }
+
+  void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() => _elapsedSeconds++);
@@ -91,6 +103,21 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
   void _startNewGame() {
     GameStateStorage.instance.clear(_gameId);
     _resetBoard();
+    _saveGame();
+  }
+
+  /// Restarts the puzzle currently on screen from its original shuffle,
+  /// undoing every move -- unlike [_startNewGame], this keeps the same
+  /// shuffled layout instead of generating a new one.
+  void _resetToInitialState() {
+    _timer?.cancel();
+    setState(() {
+      _board = _initialBoard;
+      _moves = 0;
+      _elapsedSeconds = 0;
+      _solved = false;
+    });
+    _startTimer();
     _saveGame();
   }
 
@@ -148,6 +175,11 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
       appBar: AppBar(
         title: const Text('スライドパズル'),
         actions: [
+          IconButton(
+            onPressed: _resetToInitialState,
+            icon: const Icon(Icons.restart_alt),
+            tooltip: '最初からやり直す',
+          ),
           IconButton(
             onPressed: _startNewGame,
             icon: const Icon(Icons.refresh),

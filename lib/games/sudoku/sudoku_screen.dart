@@ -101,6 +101,10 @@ class _SudokuScreenState extends State<SudokuScreen> {
       _solved = false;
     });
     _loadBestTime();
+    _startTimer();
+  }
+
+  void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() => _elapsedSeconds++);
@@ -110,6 +114,22 @@ class _SudokuScreenState extends State<SudokuScreen> {
   void _startNewGame() {
     GameStateStorage.instance.clear(_savedStateId);
     _resetBoard();
+    _saveGame();
+  }
+
+  /// Restarts the puzzle currently on screen from its starting clues,
+  /// clearing every entered number -- unlike [_startNewGame], this keeps
+  /// the same puzzle instead of generating a different one.
+  void _resetToInitialState() {
+    _timer?.cancel();
+    setState(() {
+      _grid = List<int>.from(_puzzle.puzzle);
+      _conflicts = {};
+      _selectedIndex = null;
+      _elapsedSeconds = 0;
+      _solved = false;
+    });
+    _startTimer();
     _saveGame();
   }
 
@@ -217,6 +237,11 @@ class _SudokuScreenState extends State<SudokuScreen> {
             onPressed: _pickDifficulty,
             icon: const Icon(Icons.tune),
             tooltip: '難易度',
+          ),
+          IconButton(
+            onPressed: _resetToInitialState,
+            icon: const Icon(Icons.restart_alt),
+            tooltip: '最初からやり直す',
           ),
           IconButton(
             onPressed: _startNewGame,
