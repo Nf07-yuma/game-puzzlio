@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
 import 'sliding_puzzle_logic.dart';
 
@@ -28,8 +29,9 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
   @override
   void initState() {
     super.initState();
-    _startNewGame();
+    _resetBoard();
     _loadBestTime();
+    _restoreSavedGame();
   }
 
   @override
@@ -43,7 +45,29 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
     if (mounted) setState(() => _bestTimeSeconds = best);
   }
 
-  void _startNewGame() {
+  /// Restores an in-progress game saved before navigating away, if any.
+  /// The timer started by [_resetBoard] keeps running underneath, so
+  /// resuming just swaps in the saved board/moves/elapsed time.
+  Future<void> _restoreSavedGame() async {
+    final saved = await GameStateStorage.instance.load(_gameId);
+    if (saved == null || !mounted) return;
+    final tiles = (saved['tiles'] as List).cast<int>();
+    setState(() {
+      _board = SlidingPuzzleBoard(tiles);
+      _moves = saved['moves'] as int;
+      _elapsedSeconds = saved['elapsedSeconds'] as int;
+    });
+  }
+
+  Future<void> _saveGame() async {
+    await GameStateStorage.instance.save(_gameId, {
+      'tiles': _board.tiles,
+      'moves': _moves,
+      'elapsedSeconds': _elapsedSeconds,
+    });
+  }
+
+  void _resetBoard() {
     _timer?.cancel();
     setState(() {
       _board = SlidingPuzzleBoard.shuffled(_random);
@@ -57,6 +81,11 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
     });
   }
 
+  void _startNewGame() {
+    GameStateStorage.instance.clear(_gameId);
+    _resetBoard();
+  }
+
   Future<void> _handleTap(int index) async {
     if (_solved) return;
     if (!_board.movableIndices.contains(index)) return;
@@ -68,10 +97,13 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
     if (_board.isSolved) {
       _timer?.cancel();
       setState(() => _solved = true);
+      await GameStateStorage.instance.clear(_gameId);
       if (await ScoreService.instance.submitTime(_gameId, _elapsedSeconds)) {
         if (mounted) setState(() => _bestTimeSeconds = _elapsedSeconds);
       }
       if (mounted) _showSolvedDialog();
+    } else {
+      await _saveGame();
     }
   }
 
