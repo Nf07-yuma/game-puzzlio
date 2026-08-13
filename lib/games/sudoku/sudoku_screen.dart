@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
 import 'sudoku_logic.dart';
 
@@ -14,6 +15,8 @@ class SudokuScreen extends StatefulWidget {
 }
 
 class _SudokuScreenState extends State<SudokuScreen> {
+  static const String _savedStateId = 'sudoku_current';
+
   final Random _random = Random();
 
   SudokuDifficulty _difficulty = SudokuDifficulty.medium;
@@ -31,7 +34,8 @@ class _SudokuScreenState extends State<SudokuScreen> {
   @override
   void initState() {
     super.initState();
-    _startNewGame();
+    _resetBoard();
+    _restoreSavedGame();
   }
 
   @override
@@ -45,7 +49,46 @@ class _SudokuScreenState extends State<SudokuScreen> {
     if (mounted) setState(() => _bestTimeSeconds = best);
   }
 
-  void _startNewGame() {
+  /// Restores an in-progress game saved before navigating away, if any.
+  /// The timer started by [_resetBoard] keeps running underneath, so
+  /// resuming just swaps in the saved difficulty/puzzle/grid/elapsed time.
+  /// If nothing was saved yet, persists the freshly generated board so a
+  /// puzzle that hasn't received any input is still there next time.
+  Future<void> _restoreSavedGame() async {
+    final saved = await GameStateStorage.instance.load(_savedStateId);
+    if (!mounted) return;
+    if (saved == null) {
+      await _saveGame();
+      return;
+    }
+    final difficulty = SudokuDifficulty.values.byName(
+      saved['difficulty'] as String,
+    );
+    final solution = (saved['solution'] as List).cast<int>();
+    final puzzle = (saved['puzzle'] as List).cast<int>();
+    final grid = (saved['grid'] as List).cast<int>();
+    setState(() {
+      _difficulty = difficulty;
+      _puzzle = SudokuPuzzle(solution: solution, puzzle: puzzle);
+      _grid = grid;
+      _conflicts = SudokuPuzzle.findConflicts(grid);
+      _selectedIndex = null;
+      _elapsedSeconds = saved['elapsedSeconds'] as int;
+    });
+    _loadBestTime();
+  }
+
+  Future<void> _saveGame() async {
+    await GameStateStorage.instance.save(_savedStateId, {
+      'difficulty': _difficulty.name,
+      'solution': _puzzle.solution,
+      'puzzle': _puzzle.puzzle,
+      'grid': _grid,
+      'elapsedSeconds': _elapsedSeconds,
+    });
+  }
+
+  void _resetBoard() {
     _timer?.cancel();
     final puzzle = SudokuPuzzle.generate(_random, _difficulty);
     setState(() {
@@ -61,6 +104,12 @@ class _SudokuScreenState extends State<SudokuScreen> {
       if (!mounted) return;
       setState(() => _elapsedSeconds++);
     });
+  }
+
+  void _startNewGame() {
+    GameStateStorage.instance.clear(_savedStateId);
+    _resetBoard();
+    _saveGame();
   }
 
   void _selectCell(int index) {
@@ -80,20 +129,24 @@ class _SudokuScreenState extends State<SudokuScreen> {
     if (isFull && _conflicts.isEmpty) {
       _timer?.cancel();
       setState(() => _solved = true);
+      await GameStateStorage.instance.clear(_savedStateId);
       if (await ScoreService.instance.submitTime(_gameId, _elapsedSeconds)) {
         if (mounted) setState(() => _bestTimeSeconds = _elapsedSeconds);
       }
       if (mounted) _showSolvedDialog();
+    } else {
+      await _saveGame();
     }
   }
 
-  void _erase() {
+  Future<void> _erase() async {
     final index = _selectedIndex;
     if (index == null || _solved) return;
     setState(() {
       _grid[index] = 0;
       _conflicts = SudokuPuzzle.findConflicts(_grid);
     });
+    await _saveGame();
   }
 
   String _formatTime(int seconds) {

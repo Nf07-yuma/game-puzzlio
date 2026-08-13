@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
 import 'game_2048_logic.dart';
 
@@ -26,8 +27,9 @@ class _Game2048ScreenState extends State<Game2048Screen> {
   @override
   void initState() {
     super.initState();
-    _startNewGame();
+    _resetBoard();
     _loadBestScore();
+    _restoreSavedGame();
   }
 
   Future<void> _loadBestScore() async {
@@ -35,7 +37,34 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     if (mounted) setState(() => _bestScore = best);
   }
 
-  void _startNewGame() {
+  /// Restores an in-progress game saved before navigating away, if any.
+  /// Runs after the initial fresh board is already showing, so a missing
+  /// save simply persists that fresh board instead of leaving it unsaved.
+  Future<void> _restoreSavedGame() async {
+    final saved = await GameStateStorage.instance.load(_gameId);
+    if (!mounted) return;
+    if (saved == null) {
+      await _saveGame();
+      return;
+    }
+    final tiles = (saved['tiles'] as List).cast<int>();
+    final board = Board2048(tiles);
+    setState(() {
+      _board = board;
+      _score = saved['score'] as int;
+      _gameOver = !board.canMove;
+      _wonBannerShown = board.hasWon;
+    });
+  }
+
+  Future<void> _saveGame() async {
+    await GameStateStorage.instance.save(_gameId, {
+      'tiles': _board.tiles,
+      'score': _score,
+    });
+  }
+
+  void _resetBoard() {
     var board = Board2048.empty();
     board = board.withRandomTile(_random);
     board = board.withRandomTile(_random);
@@ -45,6 +74,12 @@ class _Game2048ScreenState extends State<Game2048Screen> {
       _gameOver = false;
       _wonBannerShown = false;
     });
+  }
+
+  void _startNewGame() {
+    GameStateStorage.instance.clear(_gameId);
+    _resetBoard();
+    _saveGame();
   }
 
   Future<void> _handleMove(SwipeDirection direction) async {
@@ -59,6 +94,12 @@ class _Game2048ScreenState extends State<Game2048Screen> {
       _score = newScore;
       _gameOver = !newBoard.canMove;
     });
+
+    if (_gameOver) {
+      await GameStateStorage.instance.clear(_gameId);
+    } else {
+      await _saveGame();
+    }
 
     if (await ScoreService.instance.submitScore(_gameId, newScore)) {
       if (mounted) setState(() => _bestScore = newScore);
