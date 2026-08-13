@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
@@ -114,6 +115,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
 
   void _selectCell(int index) {
     if (_solved || _puzzle.isGiven(index)) return;
+    HapticFeedback.selectionClick();
     setState(() => _selectedIndex = index);
   }
 
@@ -127,6 +129,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
 
     final isFull = !_grid.contains(0);
     if (isFull && _conflicts.isEmpty) {
+      HapticFeedback.mediumImpact();
       _timer?.cancel();
       setState(() => _solved = true);
       await GameStateStorage.instance.clear(_savedStateId);
@@ -135,6 +138,11 @@ class _SudokuScreenState extends State<SudokuScreen> {
       }
       if (mounted) _showSolvedDialog();
     } else {
+      if (_conflicts.contains(index)) {
+        HapticFeedback.heavyImpact();
+      } else {
+        HapticFeedback.lightImpact();
+      }
       await _saveGame();
     }
   }
@@ -142,6 +150,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
   Future<void> _erase() async {
     final index = _selectedIndex;
     if (index == null || _solved) return;
+    HapticFeedback.lightImpact();
     setState(() {
       _grid[index] = 0;
       _conflicts = SudokuPuzzle.findConflicts(_grid);

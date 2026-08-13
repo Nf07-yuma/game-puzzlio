@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
@@ -86,6 +87,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     if (_gameOver) return;
     final result = _board.move(direction);
     if (!result.moved) return;
+    HapticFeedback.lightImpact();
 
     final newBoard = result.board.withRandomTile(_random);
     final newScore = _score + result.scoreGained;
@@ -96,6 +98,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     });
 
     if (_gameOver) {
+      HapticFeedback.heavyImpact();
       await GameStateStorage.instance.clear(_gameId);
     } else {
       await _saveGame();
@@ -107,6 +110,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
 
     if (!_wonBannerShown && newBoard.hasWon) {
       _wonBannerShown = true;
+      HapticFeedback.mediumImpact();
       if (mounted) _showWinDialog();
     } else if (_gameOver) {
       if (mounted) _showGameOverDialog();
