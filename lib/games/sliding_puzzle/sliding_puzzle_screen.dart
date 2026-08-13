@@ -187,7 +187,7 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
             ),
             const Padding(
               padding: EdgeInsets.only(bottom: 16),
-              child: Text('空きマスの隣のピースをタップして動かそう'),
+              child: Text('空きマスの隣のピースをタップ、またはドラッグして動かそう'),
             ),
           ],
         ),
@@ -226,37 +226,151 @@ class _StatBox extends StatelessWidget {
   }
 }
 
-class _PuzzleGrid extends StatelessWidget {
+/// Renders the board as a [Stack] of tiles positioned by pixel offset
+/// (rather than a [GridView]) so a tile can animate smoothly between cells
+/// -- either sliding into place after a tap, or tracking a finger drag and
+/// snapping/springing back on release.
+class _PuzzleGrid extends StatefulWidget {
   const _PuzzleGrid({required this.board, required this.onTap});
 
   final SlidingPuzzleBoard board;
   final ValueChanged<int> onTap;
 
   @override
+  State<_PuzzleGrid> createState() => _PuzzleGridState();
+}
+
+class _PuzzleGridState extends State<_PuzzleGrid> {
+  static const double _spacing = 8;
+  static const double _commitThresholdFraction = 0.35;
+
+  int? _draggingIndex;
+  Offset _dragOffset = Offset.zero;
+
+  @override
+  void didUpdateWidget(covariant _PuzzleGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The board only changes once a move is committed (tap or a completed
+    // drag), at which point any in-progress drag is already done with.
+    if (oldWidget.board != widget.board) {
+      _draggingIndex = null;
+      _dragOffset = Offset.zero;
+    }
+  }
+
+  /// Clamps a raw drag delta to the single direction that actually slides
+  /// [index] into the blank space at [blankIndex] -- e.g. only rightward if
+  /// the blank is to the right -- so the tile can't be dragged past it or
+  /// off in an illegal direction.
+  Offset _clampToBlank(
+    Offset raw,
+    int index,
+    int blankIndex,
+    double cellExtent,
+  ) {
+    const size = SlidingPuzzleBoard.size;
+    final tileRow = index ~/ size;
+    final tileCol = index % size;
+    final blankRow = blankIndex ~/ size;
+    final blankCol = blankIndex % size;
+    if (tileRow == blankRow) {
+      final dx = blankCol > tileCol
+          ? raw.dx.clamp(0, cellExtent)
+          : raw.dx.clamp(-cellExtent, 0);
+      return Offset(dx.toDouble(), 0);
+    }
+    final dy = blankRow > tileRow
+        ? raw.dy.clamp(0, cellExtent)
+        : raw.dy.clamp(-cellExtent, 0);
+    return Offset(0, dy.toDouble());
+  }
+
+  void _handlePanStart(int index) {
+    setState(() {
+      _draggingIndex = index;
+      _dragOffset = Offset.zero;
+    });
+  }
+
+  void _handlePanUpdate(
+    int index,
+    DragUpdateDetails details,
+    double cellExtent,
+  ) {
+    if (_draggingIndex != index) return;
+    setState(() {
+      _dragOffset = _clampToBlank(
+        _dragOffset + details.delta,
+        index,
+        widget.board.blankIndex,
+        cellExtent,
+      );
+    });
+  }
+
+  void _handlePanEnd(int index, double cellExtent) {
+    if (_draggingIndex != index) return;
+    final traveled = _dragOffset.dx.abs() + _dragOffset.dy.abs();
+    final committed = traveled > cellExtent * _commitThresholdFraction;
+    setState(() {
+      _draggingIndex = null;
+      _dragOffset = Offset.zero;
+    });
+    if (committed) widget.onTap(index);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        color: colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: SlidingPuzzleBoard.size,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: SlidingPuzzleBoard.size * SlidingPuzzleBoard.size,
-        itemBuilder: (context, index) {
-          final value = board.tiles[index];
-          final movable = board.movableIndices.contains(index);
-          return _PuzzlePiece(
-            value: value,
-            movable: movable,
-            onTap: () => onTap(index),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const size = SlidingPuzzleBoard.size;
+          final cell = (constraints.maxWidth - _spacing * (size - 1)) / size;
+          return Stack(
+            children: [
+              for (var index = 0; index < widget.board.tiles.length; index++)
+                if (widget.board.tiles[index] != 0)
+                  _buildTile(index, cell, colorScheme),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildTile(int index, double cell, ColorScheme colorScheme) {
+    const size = SlidingPuzzleBoard.size;
+    final value = widget.board.tiles[index];
+    final movable = widget.board.movableIndices.contains(index);
+    final dragging = _draggingIndex == index;
+    final offset = dragging ? _dragOffset : Offset.zero;
+
+    return AnimatedPositioned(
+      key: ValueKey(value),
+      duration: dragging ? Duration.zero : const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      left: (index % size) * (cell + _spacing) + offset.dx,
+      top: (index ~/ size) * (cell + _spacing) + offset.dy,
+      width: cell,
+      height: cell,
+      child: GestureDetector(
+        onPanStart: movable ? (_) => _handlePanStart(index) : null,
+        onPanUpdate: movable
+            ? (details) => _handlePanUpdate(index, details, cell)
+            : null,
+        onPanEnd: movable ? (_) => _handlePanEnd(index, cell) : null,
+        onPanCancel: movable ? () => _handlePanEnd(index, cell) : null,
+        child: _PuzzlePiece(
+          value: value,
+          movable: movable,
+          onTap: () => widget.onTap(index),
+        ),
       ),
     );
   }
@@ -275,8 +389,6 @@ class _PuzzlePiece extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (value == 0) return const SizedBox.expand();
-
     final colorScheme = Theme.of(context).colorScheme;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
