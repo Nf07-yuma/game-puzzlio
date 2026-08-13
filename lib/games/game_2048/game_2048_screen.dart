@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
 import 'game_2048_logic.dart';
+import 'game_2048_tile_animation.dart';
 
 class Game2048Screen extends StatefulWidget {
   const Game2048Screen({super.key});
@@ -20,6 +21,8 @@ class _Game2048ScreenState extends State<Game2048Screen> {
   final Random _random = Random();
 
   late Board2048 _board;
+  List<AnimatedTile> _tiles = [];
+  int _nextTileId = 0;
   int _score = 0;
   int? _bestScore;
   bool _gameOver = false;
@@ -52,10 +55,31 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     final board = Board2048(tiles);
     setState(() {
       _board = board;
+      _tiles = _tilesFromBoard(board);
       _score = saved['score'] as int;
       _gameOver = !board.canMove;
       _wonBannerShown = board.hasWon;
     });
+  }
+
+  /// Assigns fresh, unique ids to every occupied cell of [board], in
+  /// row-major order. Used whenever tile identity doesn't need to carry
+  /// over from a previous frame (initial deal, restoring a saved game).
+  List<AnimatedTile> _tilesFromBoard(Board2048 board) {
+    final tiles = <AnimatedTile>[];
+    for (var i = 0; i < board.tiles.length; i++) {
+      final value = board.tiles[i];
+      if (value == 0) continue;
+      tiles.add(
+        AnimatedTile(
+          id: _nextTileId++,
+          value: value,
+          row: i ~/ Board2048.size,
+          col: i % Board2048.size,
+        ),
+      );
+    }
+    return tiles;
   }
 
   Future<void> _saveGame() async {
@@ -71,6 +95,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     board = board.withRandomTile(_random);
     setState(() {
       _board = board;
+      _tiles = _tilesFromBoard(board);
       _score = 0;
       _gameOver = false;
       _wonBannerShown = false;
@@ -89,10 +114,29 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     if (!result.moved) return;
     HapticFeedback.lightImpact();
 
+    final slidTiles = slideAnimatedTiles(_tiles, direction);
     final newBoard = result.board.withRandomTile(_random);
+    var newTiles = slidTiles;
+    for (var i = 0; i < newBoard.tiles.length; i++) {
+      if (result.board.tiles[i] == 0 && newBoard.tiles[i] != 0) {
+        newTiles = [
+          ...slidTiles,
+          AnimatedTile(
+            id: _nextTileId++,
+            value: newBoard.tiles[i],
+            row: i ~/ Board2048.size,
+            col: i % Board2048.size,
+            isNew: true,
+          ),
+        ];
+        break;
+      }
+    }
+
     final newScore = _score + result.scoreGained;
     setState(() {
       _board = newBoard;
+      _tiles = newTiles;
       _score = newScore;
       _gameOver = !newBoard.canMove;
     });
@@ -206,7 +250,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
                     padding: const EdgeInsets.all(16),
                     child: AspectRatio(
                       aspectRatio: 1,
-                      child: _Board2048View(board: _board),
+                      child: _Board2048View(tiles: _tiles),
                     ),
                   ),
                 ),
@@ -254,9 +298,11 @@ class _ScoreBox extends StatelessWidget {
 }
 
 class _Board2048View extends StatelessWidget {
-  const _Board2048View({required this.board});
+  const _Board2048View({required this.tiles});
 
-  final Board2048 board;
+  final List<AnimatedTile> tiles;
+
+  static const double _spacing = 8;
 
   @override
   Widget build(BuildContext context) {
@@ -266,17 +312,43 @@ class _Board2048View extends StatelessWidget {
         color: const Color(0xFFBBADA0),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: Board2048.size,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: Board2048.size * Board2048.size,
-        itemBuilder: (context, index) {
-          final value = board.tiles[index];
-          return _Tile(value: value);
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cell =
+              (constraints.maxWidth - _spacing * (Board2048.size - 1)) /
+                  Board2048.size;
+          return Stack(
+            children: [
+              for (var i = 0; i < Board2048.size * Board2048.size; i++)
+                Positioned(
+                  left: (i % Board2048.size) * (cell + _spacing),
+                  top: (i ~/ Board2048.size) * (cell + _spacing),
+                  width: cell,
+                  height: cell,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              for (final tile in tiles)
+                AnimatedPositioned(
+                  key: ValueKey(tile.id),
+                  duration: const Duration(milliseconds: 130),
+                  curve: Curves.easeOutCubic,
+                  left: tile.col * (cell + _spacing),
+                  top: tile.row * (cell + _spacing),
+                  width: cell,
+                  height: cell,
+                  child: _Tile(
+                    value: tile.value,
+                    isNew: tile.isNew,
+                    justMerged: tile.justMerged,
+                  ),
+                ),
+            ],
+          );
         },
       ),
     );
@@ -284,9 +356,15 @@ class _Board2048View extends StatelessWidget {
 }
 
 class _Tile extends StatelessWidget {
-  const _Tile({required this.value});
+  const _Tile({
+    required this.value,
+    this.isNew = false,
+    this.justMerged = false,
+  });
 
   final int value;
+  final bool isNew;
+  final bool justMerged;
 
   Color _backgroundColor() {
     const colors = {
@@ -309,25 +387,31 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+    final tile = Container(
       decoration: BoxDecoration(
-        color: value == 0
-            ? Colors.white.withValues(alpha: 0.35)
-            : _backgroundColor(),
+        color: _backgroundColor(),
         borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
-      child: value == 0
-          ? null
-          : Text(
-              '$value',
-              style: TextStyle(
-                color: _textColor(),
-                fontWeight: FontWeight.bold,
-                fontSize: value >= 1024 ? 22 : 26,
-              ),
-            ),
+      child: Text(
+        '$value',
+        style: TextStyle(
+          color: _textColor(),
+          fontWeight: FontWeight.bold,
+          fontSize: value >= 1024 ? 22 : 26,
+        ),
+      ),
+    );
+
+    final beginScale = isNew ? 0.4 : (justMerged ? 1.18 : 1.0);
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('$value-$isNew-$justMerged'),
+      tween: Tween(begin: beginScale, end: 1.0),
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOut,
+      builder: (context, scale, child) =>
+          Transform.scale(scale: scale, child: child),
+      child: tile,
     );
   }
 }
