@@ -52,9 +52,15 @@ class _SudokuScreenState extends State<SudokuScreen> {
   /// Restores an in-progress game saved before navigating away, if any.
   /// The timer started by [_resetBoard] keeps running underneath, so
   /// resuming just swaps in the saved difficulty/puzzle/grid/elapsed time.
+  /// If nothing was saved yet, persists the freshly generated board so a
+  /// puzzle that hasn't received any input is still there next time.
   Future<void> _restoreSavedGame() async {
     final saved = await GameStateStorage.instance.load(_savedStateId);
-    if (saved == null || !mounted) return;
+    if (!mounted) return;
+    if (saved == null) {
+      await _saveGame();
+      return;
+    }
     final difficulty = SudokuDifficulty.values.byName(
       saved['difficulty'] as String,
     );
@@ -103,6 +109,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
   void _startNewGame() {
     GameStateStorage.instance.clear(_savedStateId);
     _resetBoard();
+    _saveGame();
   }
 
   void _selectCell(int index) {

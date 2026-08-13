@@ -47,10 +47,16 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
 
   /// Restores an in-progress game saved before navigating away, if any.
   /// The timer started by [_resetBoard] keeps running underneath, so
-  /// resuming just swaps in the saved board/moves/elapsed time.
+  /// resuming just swaps in the saved board/moves/elapsed time. If nothing
+  /// was saved yet, persists the freshly generated board so a puzzle that
+  /// hasn't received any input is still there next time.
   Future<void> _restoreSavedGame() async {
     final saved = await GameStateStorage.instance.load(_gameId);
-    if (saved == null || !mounted) return;
+    if (!mounted) return;
+    if (saved == null) {
+      await _saveGame();
+      return;
+    }
     final tiles = (saved['tiles'] as List).cast<int>();
     setState(() {
       _board = SlidingPuzzleBoard(tiles);
@@ -84,6 +90,7 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
   void _startNewGame() {
     GameStateStorage.instance.clear(_gameId);
     _resetBoard();
+    _saveGame();
   }
 
   Future<void> _handleTap(int index) async {

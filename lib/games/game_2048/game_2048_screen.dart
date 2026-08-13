@@ -39,10 +39,14 @@ class _Game2048ScreenState extends State<Game2048Screen> {
 
   /// Restores an in-progress game saved before navigating away, if any.
   /// Runs after the initial fresh board is already showing, so a missing
-  /// save simply leaves that fresh board in place.
+  /// save simply persists that fresh board instead of leaving it unsaved.
   Future<void> _restoreSavedGame() async {
     final saved = await GameStateStorage.instance.load(_gameId);
-    if (saved == null || !mounted) return;
+    if (!mounted) return;
+    if (saved == null) {
+      await _saveGame();
+      return;
+    }
     final tiles = (saved['tiles'] as List).cast<int>();
     final board = Board2048(tiles);
     setState(() {
@@ -75,6 +79,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
   void _startNewGame() {
     GameStateStorage.instance.clear(_gameId);
     _resetBoard();
+    _saveGame();
   }
 
   Future<void> _handleMove(SwipeDirection direction) async {
