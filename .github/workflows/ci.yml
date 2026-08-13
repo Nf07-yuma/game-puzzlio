@@ -14,32 +14,32 @@ env:
 
 jobs:
   test:
-    name: Analyze & Test
+    name: 静的解析・テスト
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Set up Flutter
+      - name: Flutter セットアップ
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
 
-      - name: Install dependencies
+      - name: 依存パッケージ取得
         run: flutter pub get
 
-      - name: Verify formatting
+      - name: フォーマットチェック
         run: dart format --output=none --set-exit-if-changed lib test
 
-      - name: Analyze
+      - name: 静的解析 (flutter analyze)
         run: flutter analyze
 
-      - name: Run tests
+      - name: テスト実行 (flutter test)
         run: flutter test
 
   build-apk:
-    name: Build APK
+    name: APKビルド
     needs: test
     runs-on: ubuntu-latest
     env:
@@ -48,28 +48,29 @@ jobs:
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
-      - name: Checkout
+      - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Set up Flutter
+      - name: Flutter セットアップ
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
 
-      - name: Set up Java
+      - name: Java セットアップ
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Install dependencies
+      - name: 依存パッケージ取得
         run: flutter pub get
 
-      # Only present on pushes/PRs that have access to repo secrets (i.e. not
-      # PRs from forks). Without it, the release build falls back to Android's
-      # debug signing key, so the workflow still succeeds either way.
-      - name: Set up release signing
+      # リポジトリシークレットにアクセスできるpush/PRでのみ実行される
+      # (fork からの PR はシークレットにアクセスできないため対象外)。
+      # このステップが実行されない場合はAndroidのデバッグ署名鍵で
+      # ビルドされるため、ワークフロー自体は成功する。
+      - name: リリース署名の設定
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
@@ -80,10 +81,10 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      - name: Build release APK
+      - name: リリースAPKビルド
         run: flutter build apk --release
 
-      - name: Upload APK artifact
+      - name: APKアーティファクトのアップロード
         uses: actions/upload-artifact@v4
         with:
           name: puzzlio-release-apk
