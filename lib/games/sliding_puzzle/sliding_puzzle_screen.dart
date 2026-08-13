@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
@@ -96,12 +97,14 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
   Future<void> _handleTap(int index) async {
     if (_solved) return;
     if (!_board.movableIndices.contains(index)) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _board = _board.tap(index);
       _moves++;
     });
 
     if (_board.isSolved) {
+      HapticFeedback.mediumImpact();
       _timer?.cancel();
       setState(() => _solved = true);
       await GameStateStorage.instance.clear(_gameId);
