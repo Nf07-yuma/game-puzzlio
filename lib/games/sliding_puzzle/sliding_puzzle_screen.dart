@@ -41,6 +41,10 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    // The timer only updates _elapsedSeconds in memory each tick -- it isn't
+    // persisted until the next move. Save here too so time spent without
+    // moving a tile isn't lost when navigating away.
+    if (!_solved) _saveGame();
     super.dispose();
   }
 
