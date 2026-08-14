@@ -8,6 +8,8 @@ import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
 import 'sudoku_logic.dart';
 
+enum _GameMenuAction { restart, newGame }
+
 class SudokuScreen extends StatefulWidget {
   const SudokuScreen({super.key});
 
@@ -238,15 +240,39 @@ class _SudokuScreenState extends State<SudokuScreen> {
             icon: const Icon(Icons.tune),
             tooltip: '難易度',
           ),
-          IconButton(
-            onPressed: _resetToInitialState,
-            icon: const Icon(Icons.restart_alt),
-            tooltip: '最初からやり直す',
-          ),
-          IconButton(
-            onPressed: _startNewGame,
-            icon: const Icon(Icons.refresh),
-            tooltip: '新しいゲーム',
+          PopupMenuButton<_GameMenuAction>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'メニュー',
+            onSelected: (action) {
+              switch (action) {
+                case _GameMenuAction.restart:
+                  _resetToInitialState();
+                case _GameMenuAction.newGame:
+                  _startNewGame();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _GameMenuAction.restart,
+                child: Row(
+                  children: [
+                    Icon(Icons.replay),
+                    SizedBox(width: 12),
+                    Text('最初からやり直す'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: _GameMenuAction.newGame,
+                child: Row(
+                  children: [
+                    Icon(Icons.shuffle),
+                    SizedBox(width: 12),
+                    Text('新しいゲーム'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

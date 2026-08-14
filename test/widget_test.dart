@@ -26,6 +26,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('スコア'), findsOneWidget);
-    expect(find.byIcon(Icons.refresh), findsOneWidget);
+    expect(find.byIcon(Icons.more_vert), findsOneWidget);
   });
 }

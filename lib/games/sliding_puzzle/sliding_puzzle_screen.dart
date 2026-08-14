@@ -8,6 +8,8 @@ import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
 import 'sliding_puzzle_logic.dart';
 
+enum _GameMenuAction { restart, newGame }
+
 class SlidingPuzzleScreen extends StatefulWidget {
   const SlidingPuzzleScreen({super.key});
 
@@ -175,15 +177,39 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
       appBar: AppBar(
         title: const Text('スライドパズル'),
         actions: [
-          IconButton(
-            onPressed: _resetToInitialState,
-            icon: const Icon(Icons.restart_alt),
-            tooltip: '最初からやり直す',
-          ),
-          IconButton(
-            onPressed: _startNewGame,
-            icon: const Icon(Icons.refresh),
-            tooltip: '新しいゲーム',
+          PopupMenuButton<_GameMenuAction>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'メニュー',
+            onSelected: (action) {
+              switch (action) {
+                case _GameMenuAction.restart:
+                  _resetToInitialState();
+                case _GameMenuAction.newGame:
+                  _startNewGame();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _GameMenuAction.restart,
+                child: Row(
+                  children: [
+                    Icon(Icons.replay),
+                    SizedBox(width: 12),
+                    Text('最初からやり直す'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: _GameMenuAction.newGame,
+                child: Row(
+                  children: [
+                    Icon(Icons.shuffle),
+                    SizedBox(width: 12),
+                    Text('新しいゲーム'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
