@@ -384,6 +384,8 @@ class _SudokuGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final selectedValue = selectedIndex == null ? null : grid[selectedIndex!];
+    final selectedRow = selectedIndex == null ? null : selectedIndex! ~/ 9;
+    final selectedCol = selectedIndex == null ? null : selectedIndex! % 9;
 
     return Container(
       decoration: BoxDecoration(
@@ -405,12 +407,17 @@ class _SudokuGrid extends StatelessWidget {
           final isSameValue = selectedValue != null &&
               selectedValue != 0 &&
               value == selectedValue;
+          final isRowOrCol = !isSelected &&
+              selectedIndex != null &&
+              (row == selectedRow || col == selectedCol);
 
           Color background;
           if (isSelected) {
             background = colorScheme.primary.withValues(alpha: 0.35);
           } else if (isSameValue) {
             background = colorScheme.primary.withValues(alpha: 0.15);
+          } else if (isRowOrCol) {
+            background = colorScheme.primary.withValues(alpha: 0.08);
           } else if ((row ~/ 3 + col ~/ 3).isEven) {
             background = colorScheme.surfaceContainerHighest;
           } else {
