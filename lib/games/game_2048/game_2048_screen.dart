@@ -8,6 +8,8 @@ import '../../services/score_service.dart';
 import 'game_2048_logic.dart';
 import 'game_2048_tile_animation.dart';
 
+enum _GameMenuAction { restart, newGame }
+
 class Game2048Screen extends StatefulWidget {
   const Game2048Screen({super.key});
 
@@ -21,6 +23,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
   final Random _random = Random();
 
   late Board2048 _board;
+  late Board2048 _initialBoard;
   List<AnimatedTile> _tiles = [];
   int _nextTileId = 0;
   int _score = 0;
@@ -53,9 +56,14 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     }
     final tiles = (saved['tiles'] as List).cast<int>();
     final board = Board2048(tiles);
+    final initialTilesRaw = saved['initialTiles'] as List?;
+    final initialBoard = initialTilesRaw != null
+        ? Board2048(initialTilesRaw.cast<int>())
+        : board;
     setState(() {
       _board = board;
       _tiles = _tilesFromBoard(board);
+      _initialBoard = initialBoard;
       _score = saved['score'] as int;
       _gameOver = !board.canMove;
       _wonBannerShown = board.hasWon;
@@ -85,6 +93,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
   Future<void> _saveGame() async {
     await GameStateStorage.instance.save(_gameId, {
       'tiles': _board.tiles,
+      'initialTiles': _initialBoard.tiles,
       'score': _score,
     });
   }
@@ -93,9 +102,11 @@ class _Game2048ScreenState extends State<Game2048Screen> {
     var board = Board2048.empty();
     board = board.withRandomTile(_random);
     board = board.withRandomTile(_random);
+    final tiles = _tilesFromBoard(board);
     setState(() {
       _board = board;
-      _tiles = _tilesFromBoard(board);
+      _tiles = tiles;
+      _initialBoard = board;
       _score = 0;
       _gameOver = false;
       _wonBannerShown = false;
@@ -105,6 +116,20 @@ class _Game2048ScreenState extends State<Game2048Screen> {
   void _startNewGame() {
     GameStateStorage.instance.clear(_gameId);
     _resetBoard();
+    _saveGame();
+  }
+
+  /// Restarts the current game from its original two starting tiles,
+  /// discarding every move -- unlike [_startNewGame], this replays the
+  /// same deal instead of dealing a new one.
+  void _resetToInitialState() {
+    setState(() {
+      _board = _initialBoard;
+      _tiles = _tilesFromBoard(_initialBoard);
+      _score = 0;
+      _gameOver = false;
+      _wonBannerShown = false;
+    });
     _saveGame();
   }
 
@@ -209,10 +234,39 @@ class _Game2048ScreenState extends State<Game2048Screen> {
       appBar: AppBar(
         title: const Text('2048'),
         actions: [
-          IconButton(
-            onPressed: _startNewGame,
-            icon: const Icon(Icons.refresh),
-            tooltip: '新しいゲーム',
+          PopupMenuButton<_GameMenuAction>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'メニュー',
+            onSelected: (action) {
+              switch (action) {
+                case _GameMenuAction.restart:
+                  _resetToInitialState();
+                case _GameMenuAction.newGame:
+                  _startNewGame();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _GameMenuAction.restart,
+                child: Row(
+                  children: [
+                    Icon(Icons.replay),
+                    SizedBox(width: 12),
+                    Text('最初からやり直す'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: _GameMenuAction.newGame,
+                child: Row(
+                  children: [
+                    Icon(Icons.shuffle),
+                    SizedBox(width: 12),
+                    Text('新しいゲーム'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
