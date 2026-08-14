@@ -147,15 +147,19 @@ class _SudokuScreenState extends State<SudokuScreen> {
     _saveGame();
   }
 
+  /// Selects any cell, including given clues -- selecting a clue can't be
+  /// edited (see [_inputValue] / [_erase]) but still drives the row/column
+  /// and same-value highlighting, e.g. tapping a printed clue highlights
+  /// every other cell with that number.
   void _selectCell(int index) {
-    if (_solved || _puzzle.isGiven(index)) return;
+    if (_solved) return;
     HapticFeedback.selectionClick();
     setState(() => _selectedIndex = index);
   }
 
   Future<void> _inputValue(int value) async {
     final index = _selectedIndex;
-    if (index == null || _solved) return;
+    if (index == null || _solved || _puzzle.isGiven(index)) return;
     setState(() {
       _grid[index] = value;
       _conflicts = SudokuPuzzle.findConflicts(_grid);
@@ -183,7 +187,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
 
   Future<void> _erase() async {
     final index = _selectedIndex;
-    if (index == null || _solved) return;
+    if (index == null || _solved || _puzzle.isGiven(index)) return;
     HapticFeedback.lightImpact();
     setState(() {
       _grid[index] = 0;
