@@ -95,18 +95,26 @@ class _SudokuScreenState extends State<SudokuScreen> {
     });
   }
 
+  /// Generates a fresh puzzle without touching [_elapsedSeconds] -- neither
+  /// this nor [_resetToInitialState] resets the time, only [initState]'s
+  /// first call and restoring a saved game do.
   void _resetBoard() {
-    _timer?.cancel();
     final puzzle = SudokuPuzzle.generate(_random, _difficulty);
     setState(() {
       _puzzle = puzzle;
       _grid = List<int>.from(puzzle.puzzle);
       _conflicts = {};
       _selectedIndex = null;
-      _elapsedSeconds = 0;
       _solved = false;
     });
     _loadBestTime();
+    _ensureTimerRunning();
+  }
+
+  /// Starts the timer if it isn't already ticking (e.g. it was stopped when
+  /// the previous puzzle was solved).
+  void _ensureTimerRunning() {
+    if (_timer != null && _timer!.isActive) return;
     _startTimer();
   }
 
@@ -125,17 +133,16 @@ class _SudokuScreenState extends State<SudokuScreen> {
 
   /// Restarts the puzzle currently on screen from its starting clues,
   /// clearing every entered number -- unlike [_startNewGame], this keeps
-  /// the same puzzle instead of generating a different one.
+  /// the same puzzle instead of generating a different one. Neither resets
+  /// [_elapsedSeconds]; the clock keeps running across both actions.
   void _resetToInitialState() {
-    _timer?.cancel();
     setState(() {
       _grid = List<int>.from(_puzzle.puzzle);
       _conflicts = {};
       _selectedIndex = null;
-      _elapsedSeconds = 0;
       _solved = false;
     });
-    _startTimer();
+    _ensureTimerRunning();
     _saveGame();
   }
 

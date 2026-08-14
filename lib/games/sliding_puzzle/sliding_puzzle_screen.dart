@@ -86,16 +86,24 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
     });
   }
 
+  /// Shuffles a fresh board without touching [_elapsedSeconds] -- neither
+  /// this nor [_resetToInitialState] resets the time, only [initState]'s
+  /// first call and restoring a saved game do.
   void _resetBoard() {
-    _timer?.cancel();
     final board = SlidingPuzzleBoard.shuffled(_random);
     setState(() {
       _board = board;
       _initialBoard = board;
       _moves = 0;
-      _elapsedSeconds = 0;
       _solved = false;
     });
+    _ensureTimerRunning();
+  }
+
+  /// Starts the timer if it isn't already ticking (e.g. it was stopped when
+  /// the previous puzzle was solved).
+  void _ensureTimerRunning() {
+    if (_timer != null && _timer!.isActive) return;
     _startTimer();
   }
 
@@ -114,16 +122,15 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
 
   /// Restarts the puzzle currently on screen from its original shuffle,
   /// undoing every move -- unlike [_startNewGame], this keeps the same
-  /// shuffled layout instead of generating a new one.
+  /// shuffled layout instead of generating a new one. Neither resets
+  /// [_elapsedSeconds]; the clock keeps running across both actions.
   void _resetToInitialState() {
-    _timer?.cancel();
     setState(() {
       _board = _initialBoard;
       _moves = 0;
-      _elapsedSeconds = 0;
       _solved = false;
     });
-    _startTimer();
+    _ensureTimerRunning();
     _saveGame();
   }
 
