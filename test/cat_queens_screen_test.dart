@@ -65,6 +65,58 @@ void main() {
   });
 
   testWidgets(
+    'tapping X again within the cat window places a cat',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: CatQueensScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      final center = cellCenter(tester, 3, 3);
+      await tester.tapAt(center); // -> X
+      await tester.pump();
+
+      await tester.runAsync(
+        () => Future.delayed(const Duration(milliseconds: 500)),
+      );
+
+      await tester.tapAt(center); // well within the 3s window -> cat
+      await tester.pump();
+      expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'tapping X again after the cat window elapses clears the cell instead',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: CatQueensScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      final center = cellCenter(tester, 3, 3);
+      await tester.tapAt(center); // -> X
+      await tester.pump();
+      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+      await tester.runAsync(
+        () => Future.delayed(const Duration(seconds: 3, milliseconds: 200)),
+      );
+
+      await tester.tapAt(center); // window elapsed -> empty, not cat
+      await tester.pump();
+      expect(find.byIcon(Icons.close_rounded), findsNothing);
+      expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
     'dragging across cells marks each one with an X without lifting',
     (tester) async {
       await tester.pumpWidget(

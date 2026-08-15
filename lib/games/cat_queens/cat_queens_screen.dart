@@ -34,6 +34,11 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
   static const String _gameId = 'cat_queens';
   static const String _savedStateId = 'cat_queens_current';
 
+  /// How long after a cell is marked with an X a follow-up tap still turns
+  /// it into a cat. A tap later than this (or on a cat) clears the cell
+  /// instead.
+  static const Duration _catWindow = Duration(seconds: 3);
+
   final Random _random = Random();
 
   int _level = 1;
@@ -41,6 +46,12 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
   int? _bestScore;
   late CatQueensPuzzle _puzzle;
   late List<CatCellState> _board;
+
+  /// When each currently-marked cell became an X, keyed by cell index --
+  /// used to decide whether the next tap on it should place a cat or clear
+  /// it. Cells that aren't marked have no entry.
+  final Map<int, DateTime> _markedAt = {};
+
   CatQueensValidation _validation = const CatQueensValidation(
     conflicts: {},
     solved: false,
@@ -78,6 +89,7 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
         solutionColumns: solutionColumns,
       );
       _board = board;
+      _markedAt.clear();
       _validation = CatQueensPuzzle.validate(size, regions, board);
     });
   }
@@ -97,6 +109,7 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
     final size = CatQueensPuzzle.sizeForLevel(level);
     _puzzle = CatQueensPuzzle.generate(_random, size);
     _board = List<CatCellState>.filled(size * size, CatCellState.empty);
+    _markedAt.clear();
     _validation = const CatQueensValidation(conflicts: {}, solved: false);
   }
 
@@ -106,6 +119,7 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
         _puzzle.size * _puzzle.size,
         CatCellState.empty,
       );
+      _markedAt.clear();
       _validation = const CatQueensValidation(conflicts: {}, solved: false);
     });
     _saveGame();
@@ -120,14 +134,33 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
     await _saveGame();
   }
 
+  /// Cycles a cell's state on tap:
+  /// - empty -> marked (X)
+  /// - marked -> cat, but only if tapped again within [_catWindow] of being
+  ///   marked; otherwise (or once it's a cat) -> empty.
+  /// - cat -> empty
   void _tapCell(int index) {
     if (_validation.solved) return;
+    final current = _board[index];
+    final CatCellState next;
+    switch (current) {
+      case CatCellState.empty:
+        next = CatCellState.marked;
+      case CatCellState.marked:
+        final markedAt = _markedAt[index];
+        final withinWindow = markedAt != null &&
+            DateTime.now().difference(markedAt) <= _catWindow;
+        next = withinWindow ? CatCellState.cat : CatCellState.empty;
+      case CatCellState.cat:
+        next = CatCellState.empty;
+    }
     setState(() {
-      _board[index] = switch (_board[index]) {
-        CatCellState.empty => CatCellState.marked,
-        CatCellState.marked => CatCellState.cat,
-        CatCellState.cat => CatCellState.empty,
-      };
+      _board[index] = next;
+      if (next == CatCellState.marked) {
+        _markedAt[index] = DateTime.now();
+      } else {
+        _markedAt.remove(index);
+      }
       _validation = CatQueensPuzzle.validate(
         _puzzle.size,
         _puzzle.regions,
@@ -156,6 +189,7 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
     HapticFeedback.selectionClick();
     setState(() {
       _board[index] = CatCellState.marked;
+      _markedAt[index] = DateTime.now();
       _validation = CatQueensPuzzle.validate(
         _puzzle.size,
         _puzzle.regions,
@@ -175,6 +209,7 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
         HapticFeedback.lightImpact();
         setState(() {
           _board[targetIndex] = CatCellState.cat;
+          _markedAt.remove(targetIndex);
           _validation = CatQueensPuzzle.validate(size, _puzzle.regions, _board);
         });
         if (_validation.solved) {
