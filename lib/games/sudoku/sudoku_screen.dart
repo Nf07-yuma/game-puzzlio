@@ -387,6 +387,7 @@ class _SudokuGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
     final selectedValue = selectedIndex == null ? null : grid[selectedIndex!];
     final selectedRow = selectedIndex == null ? null : selectedIndex! ~/ 9;
     final selectedCol = selectedIndex == null ? null : selectedIndex! % 9;
@@ -417,11 +418,15 @@ class _SudokuGrid extends StatelessWidget {
 
           Color background;
           if (isSelected) {
-            background = colorScheme.primary.withValues(alpha: 0.35);
+            background = colorScheme.primary;
           } else if (isSameValue) {
-            background = colorScheme.primary.withValues(alpha: 0.15);
+            background = colorScheme.tertiary.withValues(
+              alpha: isDark ? 0.35 : 0.40,
+            );
           } else if (isRowOrCol) {
-            background = colorScheme.primary.withValues(alpha: 0.08);
+            background = colorScheme.outline.withValues(
+              alpha: isDark ? 0.14 : 0.12,
+            );
           } else if ((row ~/ 3 + col ~/ 3).isEven) {
             background = colorScheme.surfaceContainerHighest;
           } else {
@@ -463,9 +468,11 @@ class _SudokuGrid extends StatelessWidget {
                             isGiven ? FontWeight.bold : FontWeight.normal,
                         color: isConflict
                             ? colorScheme.error
-                            : isGiven
-                                ? colorScheme.onSurface
-                                : colorScheme.primary,
+                            : isSelected
+                                ? colorScheme.onPrimary
+                                : isGiven
+                                    ? colorScheme.onSurface
+                                    : colorScheme.primary,
                       ),
                     ),
             ),
