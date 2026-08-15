@@ -147,15 +147,19 @@ class _SudokuScreenState extends State<SudokuScreen> {
     _saveGame();
   }
 
+  /// Selects any cell, including given clues -- selecting a clue can't be
+  /// edited (see [_inputValue] / [_erase]) but still drives the row/column
+  /// and same-value highlighting, e.g. tapping a printed clue highlights
+  /// every other cell with that number.
   void _selectCell(int index) {
-    if (_solved || _puzzle.isGiven(index)) return;
+    if (_solved) return;
     HapticFeedback.selectionClick();
     setState(() => _selectedIndex = index);
   }
 
   Future<void> _inputValue(int value) async {
     final index = _selectedIndex;
-    if (index == null || _solved) return;
+    if (index == null || _solved || _puzzle.isGiven(index)) return;
     setState(() {
       _grid[index] = value;
       _conflicts = SudokuPuzzle.findConflicts(_grid);
@@ -183,7 +187,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
 
   Future<void> _erase() async {
     final index = _selectedIndex;
-    if (index == null || _solved) return;
+    if (index == null || _solved || _puzzle.isGiven(index)) return;
     HapticFeedback.lightImpact();
     setState(() {
       _grid[index] = 0;
@@ -383,7 +387,10 @@ class _SudokuGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
     final selectedValue = selectedIndex == null ? null : grid[selectedIndex!];
+    final selectedRow = selectedIndex == null ? null : selectedIndex! ~/ 9;
+    final selectedCol = selectedIndex == null ? null : selectedIndex! % 9;
 
     return Container(
       decoration: BoxDecoration(
@@ -405,12 +412,21 @@ class _SudokuGrid extends StatelessWidget {
           final isSameValue = selectedValue != null &&
               selectedValue != 0 &&
               value == selectedValue;
+          final isRowOrCol = !isSelected &&
+              selectedIndex != null &&
+              (row == selectedRow || col == selectedCol);
 
           Color background;
           if (isSelected) {
-            background = colorScheme.primary.withValues(alpha: 0.35);
+            background = colorScheme.primary;
           } else if (isSameValue) {
-            background = colorScheme.primary.withValues(alpha: 0.15);
+            background = colorScheme.tertiary.withValues(
+              alpha: isDark ? 0.35 : 0.40,
+            );
+          } else if (isRowOrCol) {
+            background = colorScheme.outline.withValues(
+              alpha: isDark ? 0.14 : 0.12,
+            );
           } else if ((row ~/ 3 + col ~/ 3).isEven) {
             background = colorScheme.surfaceContainerHighest;
           } else {
@@ -452,9 +468,11 @@ class _SudokuGrid extends StatelessWidget {
                             isGiven ? FontWeight.bold : FontWeight.normal,
                         color: isConflict
                             ? colorScheme.error
-                            : isGiven
-                                ? colorScheme.onSurface
-                                : colorScheme.primary,
+                            : isSelected
+                                ? colorScheme.onPrimary
+                                : isGiven
+                                    ? colorScheme.onSurface
+                                    : colorScheme.primary,
                       ),
                     ),
             ),
