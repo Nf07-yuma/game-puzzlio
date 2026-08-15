@@ -1,0 +1,117 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:puzzlio/games/cat_queens/cat_queens_logic.dart';
+import 'package:puzzlio/games/cat_queens/cat_queens_screen.dart';
+import 'package:puzzlio/services/game_state_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  setUp(() async {
+    // SharedPreferences and the app's storage singletons cache their data
+    // for the lifetime of the test process, so resetting the mock values
+    // alone doesn't clear state a previous test already saved -- explicitly
+    // clear the saved-game slot each of these tests reads/writes.
+    SharedPreferences.setMockInitialValues({});
+    await GameStateStorage.instance.clear('cat_queens_current');
+  });
+
+  // Level 1 always uses a size-5 board (CatQueensPuzzle.sizeForLevel(1)),
+  // regardless of the randomly generated layout, so cell centers can be
+  // computed without needing to know the puzzle's contents.
+  final boardSize = CatQueensPuzzle.sizeForLevel(1);
+
+  Offset cellCenter(WidgetTester tester, int row, int col) {
+    final gridBox = tester.getRect(find.byType(GridView));
+    final cellWidth = gridBox.width / boardSize;
+    final cellHeight = gridBox.height / boardSize;
+    return gridBox.topLeft +
+        Offset((col + 0.5) * cellWidth, (row + 0.5) * cellHeight);
+  }
+
+  testWidgets('tapping a cell cycles empty -> X -> cat -> empty', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: CatQueensScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final center = cellCenter(tester, 0, 0);
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
+    expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsNothing);
+
+    await tester.tapAt(center);
+    await tester.pump();
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsNothing);
+
+    await tester.tapAt(center);
+    await tester.pump();
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
+    expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsOneWidget);
+
+    await tester.tapAt(center);
+    await tester.pump();
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
+    expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsNothing);
+  });
+
+  testWidgets(
+    'dragging across cells marks each one with an X without lifting',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: CatQueensScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      final gesture = await tester.startGesture(cellCenter(tester, 1, 0));
+      await gesture.moveTo(cellCenter(tester, 1, 1));
+      await gesture.moveTo(cellCenter(tester, 1, 2));
+      await gesture.moveTo(cellCenter(tester, 1, 3));
+      await gesture.up();
+      await tester.pump();
+
+      expect(find.byIcon(Icons.close_rounded), findsNWidgets(4));
+    },
+  );
+
+  testWidgets('dragging over a placed cat does not clear it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: CatQueensScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final catCell = cellCenter(tester, 2, 2);
+    await tester.tapAt(catCell); // -> X
+    await tester.pump();
+    await tester.tapAt(catCell); // -> cat
+    await tester.pump();
+    expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsOneWidget);
+
+    final gesture = await tester.startGesture(cellCenter(tester, 2, 0));
+    await gesture.moveTo(cellCenter(tester, 2, 1));
+    await gesture.moveTo(catCell);
+    await gesture.moveTo(cellCenter(tester, 2, 3));
+    await gesture.up();
+    await tester.pump();
+
+    // The cat cell is untouched; only the other three dragged-over cells
+    // picked up an X.
+    expect(
+        find.descendant(of: find.byType(GridView), matching: find.text('🐱')),
+        findsOneWidget);
+    expect(find.byIcon(Icons.close_rounded), findsNWidgets(3));
+  });
+}

@@ -122,7 +122,6 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
 
   void _tapCell(int index) {
     if (_validation.solved) return;
-    HapticFeedback.selectionClick();
     setState(() {
       _board[index] = switch (_board[index]) {
         CatCellState.empty => CatCellState.marked,
@@ -138,8 +137,32 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
     if (_validation.solved) {
       _onSolved();
     } else {
+      if (_validation.conflicts.contains(index)) {
+        HapticFeedback.heavyImpact();
+      } else {
+        HapticFeedback.selectionClick();
+      }
       _saveGame();
     }
+  }
+
+  /// Marks a single cell with an X while the player drags across the board
+  /// without lifting their finger, so a whole row/column can be crossed out
+  /// in one gesture. Cells that already hold a cat are left untouched so a
+  /// stray drag can't wipe out a placed piece.
+  void _dragMarkCell(int index) {
+    if (_validation.solved) return;
+    if (_board[index] != CatCellState.empty) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      _board[index] = CatCellState.marked;
+      _validation = CatQueensPuzzle.validate(
+        _puzzle.size,
+        _puzzle.regions,
+        _board,
+      );
+    });
+    _saveGame();
   }
 
   void _giveHint() {
@@ -305,6 +328,7 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
                       board: _board,
                       conflicts: _validation.conflicts,
                       onTap: _tapCell,
+                      onDragMark: _dragMarkCell,
                     ),
                   ),
                 ),
@@ -365,44 +389,117 @@ class _RuleChip extends StatelessWidget {
   }
 }
 
-class _CatQueensGrid extends StatelessWidget {
+/// The board grid. A single tap on a cell cycles its state, while pressing
+/// down and dragging across multiple cells without lifting the finger marks
+/// every cell the drag passes over with an X -- handy for quickly crossing
+/// out a row/column after placing a cat.
+class _CatQueensGrid extends StatefulWidget {
   const _CatQueensGrid({
     required this.puzzle,
     required this.board,
     required this.conflicts,
     required this.onTap,
+    required this.onDragMark,
   });
 
   final CatQueensPuzzle puzzle;
   final List<CatCellState> board;
   final Set<int> conflicts;
   final ValueChanged<int> onTap;
+  final ValueChanged<int> onDragMark;
+
+  @override
+  State<_CatQueensGrid> createState() => _CatQueensGridState();
+}
+
+class _CatQueensGridState extends State<_CatQueensGrid> {
+  static const double _outerPadding = 4;
+
+  final GlobalKey _boardKey = GlobalKey();
+  int? _dragStartIndex;
+  bool _isDragging = false;
+  final Set<int> _dragVisited = {};
+
+  int? _indexAt(Offset globalPosition) {
+    final box = _boardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return null;
+    final local = box.globalToLocal(globalPosition);
+    final contentSize = box.size.width - _outerPadding * 2;
+    final x = local.dx - _outerPadding;
+    final y = local.dy - _outerPadding;
+    if (x < 0 || y < 0 || x >= contentSize || y >= contentSize) return null;
+    final cellSize = contentSize / widget.puzzle.size;
+    final col = (x / cellSize).floor().clamp(0, widget.puzzle.size - 1);
+    final row = (y / cellSize).floor().clamp(0, widget.puzzle.size - 1);
+    return row * widget.puzzle.size + col;
+  }
+
+  void _resetDrag() {
+    _dragStartIndex = null;
+    _isDragging = false;
+    _dragVisited.clear();
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _dragStartIndex = _indexAt(event.position);
+    _isDragging = false;
+    _dragVisited.clear();
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    final start = _dragStartIndex;
+    if (start == null) return;
+    final index = _indexAt(event.position);
+    if (index == null) return;
+
+    if (!_isDragging) {
+      if (index == start) return;
+      _isDragging = true;
+      _dragVisited.add(start);
+      widget.onDragMark(start);
+    }
+    if (_dragVisited.add(index)) {
+      widget.onDragMark(index);
+    }
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    if (_dragStartIndex != null && !_isDragging) {
+      widget.onTap(_dragStartIndex!);
+    }
+    _resetDrag();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: puzzle.size,
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: _handlePointerDown,
+      onPointerMove: _handlePointerMove,
+      onPointerUp: _handlePointerUp,
+      onPointerCancel: (_) => _resetDrag(),
+      child: Container(
+        key: _boardKey,
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(12),
         ),
-        itemCount: puzzle.size * puzzle.size,
-        itemBuilder: (context, index) {
-          final region = puzzle.regionAt(index);
-          final color = _regionColors[region % _regionColors.length];
-          final state = board[index];
-          final isConflict = conflicts.contains(index);
+        padding: const EdgeInsets.all(_outerPadding),
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: widget.puzzle.size,
+          ),
+          itemCount: widget.puzzle.size * widget.puzzle.size,
+          itemBuilder: (context, index) {
+            final region = widget.puzzle.regionAt(index);
+            final color = _regionColors[region % _regionColors.length];
+            final state = widget.board[index];
+            final isConflict = widget.conflicts.contains(index);
 
-          return Padding(
-            padding: const EdgeInsets.all(1.5),
-            child: GestureDetector(
-              onTap: () => onTap(index),
+            return Padding(
+              padding: const EdgeInsets.all(1.5),
               child: Container(
                 decoration: BoxDecoration(
                   color: color,
@@ -424,9 +521,9 @@ class _CatQueensGrid extends StatelessWidget {
                     ),
                 },
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
