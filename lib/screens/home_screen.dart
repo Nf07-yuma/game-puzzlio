@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../games/cat_queens/cat_queens_screen.dart';
 import '../games/game_2048/game_2048_screen.dart';
 import '../games/sliding_puzzle/sliding_puzzle_screen.dart';
 import '../games/sudoku/sudoku_screen.dart';
@@ -33,6 +34,14 @@ class HomeScreen extends StatelessWidget {
       icon: Icons.apps_rounded,
       color: const Color(0xFF3AED8C),
       builder: (context) => const SudokuScreen(),
+    ),
+    PuzzleGame(
+      id: 'cat_queens',
+      title: 'ネコクイーンズ',
+      description: '色エリアに1匹ずつ、隣接なしでネコを配置しよう',
+      icon: Icons.pets_rounded,
+      color: const Color(0xFFE87FAE),
+      builder: (context) => const CatQueensScreen(),
     ),
   ];
 
