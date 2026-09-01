@@ -3,9 +3,13 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
+import '../../theme/game_colors.dart';
+import '../../widgets/board_mat.dart';
+import '../../widgets/stat_box.dart';
 import 'sudoku_logic.dart';
 
 enum _GameMenuAction { restart, newGame }
@@ -300,13 +304,19 @@ class _SudokuScreenState extends State<SudokuScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _StatBox(label: '難易度', value: _difficulty.label),
-                  _StatBox(label: 'タイム', value: _formatTime(_elapsedSeconds)),
-                  _StatBox(
+                  StatBox(label: '難易度', value: _difficulty.label, width: 96),
+                  StatBox(
+                    label: 'タイム',
+                    value: _formatTime(_elapsedSeconds),
+                    width: 96,
+                    accentColor: GameColors.wakakusa,
+                  ),
+                  StatBox(
                     label: 'ベスト',
                     value: _bestTimeSeconds == null
                         ? '--:--'
                         : _formatTime(_bestTimeSeconds!),
+                    width: 96,
                   ),
                 ],
               ),
@@ -317,12 +327,14 @@ class _SudokuScreenState extends State<SudokuScreen> {
                   padding: const EdgeInsets.all(16),
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: _SudokuGrid(
-                      puzzle: _puzzle,
-                      grid: _grid,
-                      conflicts: _conflicts,
-                      selectedIndex: _selectedIndex,
-                      onTap: _selectCell,
+                    child: BoardMat(
+                      child: _SudokuGrid(
+                        puzzle: _puzzle,
+                        grid: _grid,
+                        conflicts: _conflicts,
+                        selectedIndex: _selectedIndex,
+                        onTap: _selectCell,
+                      ),
                     ),
                   ),
                 ),
@@ -334,36 +346,6 @@ class _SudokuScreenState extends State<SudokuScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
@@ -418,7 +400,7 @@ class _SudokuGrid extends StatelessWidget {
 
           Color background;
           if (isSelected) {
-            background = colorScheme.primary;
+            background = GameColors.wakakusa;
           } else if (isSameValue) {
             background = colorScheme.tertiary.withValues(
               alpha: isDark ? 0.35 : 0.40,
@@ -462,17 +444,16 @@ class _SudokuGrid extends StatelessWidget {
                   ? null
                   : Text(
                       '$value',
-                      style: TextStyle(
+                      style: GoogleFonts.ibmPlexMono(
                         fontSize: 18,
-                        fontWeight:
-                            isGiven ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isGiven ? FontWeight.w700 : FontWeight.w500,
                         color: isConflict
                             ? colorScheme.error
                             : isSelected
-                                ? colorScheme.onPrimary
+                                ? Colors.white
                                 : isGiven
                                     ? colorScheme.onSurface
-                                    : colorScheme.primary,
+                                    : GameColors.wakakusa,
                       ),
                     ),
             ),
@@ -520,21 +501,22 @@ class _PadButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
       color: colorScheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(14),
         child: SizedBox(
           width: 44,
           height: 44,
           child: Center(
             child: icon != null
-                ? Icon(icon, size: 20)
+                ? Icon(icon, size: 20, color: colorScheme.onSurfaceVariant)
                 : Text(
                     label,
-                    style: const TextStyle(
+                    style: GoogleFonts.ibmPlexMono(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      color: GameColors.wakakusa,
                     ),
                   ),
           ),

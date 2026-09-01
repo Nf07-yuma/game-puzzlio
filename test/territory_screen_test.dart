@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:puzzlio/games/territory/territory_logic.dart';
 import 'package:puzzlio/games/territory/territory_screen.dart';
 import 'package:puzzlio/services/game_state_storage.dart';
@@ -7,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() async {
+    // Don't let google_fonts try to fetch fonts over the network in tests.
+    GoogleFonts.config.allowRuntimeFetching = false;
     // SharedPreferences and the app's storage singletons cache their data
     // for the lifetime of the test process, so resetting the mock values
     // alone doesn't clear state a previous test already saved -- explicitly
