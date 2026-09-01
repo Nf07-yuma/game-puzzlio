@@ -1,38 +1,38 @@
 import 'dart:math';
 
 /// State of a single board cell as the player fills it in.
-enum CatCellState {
+enum TerritoryCellState {
   /// Untouched.
   empty,
 
-  /// Marked with an X to note "no cat here" (does not affect win checks).
+  /// Marked with an X to note "no flag here" (does not affect win checks).
   marked,
 
-  /// A cat has been placed here.
-  cat,
+  /// A flag has been placed here.
+  flag,
 }
 
 /// Result of checking a board against the puzzle rules.
-class CatQueensValidation {
-  const CatQueensValidation({required this.conflicts, required this.solved});
+class TerritoryValidation {
+  const TerritoryValidation({required this.conflicts, required this.solved});
 
-  /// Indices of cats that break a rule (same row/column/region as another
-  /// cat, or sit next to another cat).
+  /// Indices of flags that break a rule (same row/column/region as another
+  /// flag, or sit next to another flag).
   final Set<int> conflicts;
 
-  /// True once exactly one cat sits in every row/column/region with no
+  /// True once exactly one flag sits in every row/column/region with no
   /// conflicts.
   final bool solved;
 }
 
-/// A "one cat per row, column and color region, no two cats touching"
-/// puzzle -- the classic "Queens" mechanic reskinned with cats.
+/// A logic puzzle: place one flag in every row, column, and color region,
+/// with no two flags touching (including diagonally).
 ///
 /// [regions] is a row-major list of length `size * size` giving the color
 /// region id (0..size-1) of each cell. [solutionColumns] gives one valid
-/// solution: `solutionColumns[row]` is the column of the cat in that row.
-class CatQueensPuzzle {
-  const CatQueensPuzzle({
+/// solution: `solutionColumns[row]` is the column of the flag in that row.
+class TerritoryPuzzle {
+  const TerritoryPuzzle({
     required this.size,
     required this.regions,
     required this.solutionColumns,
@@ -45,7 +45,7 @@ class CatQueensPuzzle {
   int regionAt(int index) => regions[index];
 
   /// Smallest board size for which a valid puzzle can exist: below this,
-  /// there aren't enough columns to keep every row's cat non-adjacent to
+  /// there aren't enough columns to keep every row's flag non-adjacent to
   /// the next while still using every column exactly once.
   static const int minSize = 4;
 
@@ -56,9 +56,9 @@ class CatQueensPuzzle {
     return size.clamp(minSize, 10);
   }
 
-  factory CatQueensPuzzle.generate(Random random, int size) {
+  factory TerritoryPuzzle.generate(Random random, int size) {
     assert(size >= minSize);
-    CatQueensPuzzle? best;
+    TerritoryPuzzle? best;
     for (var attempt = 0; attempt < 40; attempt++) {
       final solutionColumns = _generateSolution(random, size);
       final regions = _generateRegions(random, size, solutionColumns);
@@ -66,7 +66,7 @@ class CatQueensPuzzle {
       // own; nudge boundary cells between regions until the ambiguous
       // alternate solutions are eliminated (or we run out of budget).
       _repairForUniqueness(random, size, regions, solutionColumns);
-      final puzzle = CatQueensPuzzle(
+      final puzzle = TerritoryPuzzle(
         size: size,
         regions: regions,
         solutionColumns: solutionColumns,
@@ -255,7 +255,7 @@ class CatQueensPuzzle {
     }
 
     final ok = backtrack(0);
-    assert(ok, 'no valid cat placement exists for size $size');
+    assert(ok, 'no valid flag placement exists for size $size');
     return assignment;
   }
 
@@ -376,22 +376,22 @@ class CatQueensPuzzle {
 
   /// Checks [board] (length `size * size`) against the row/column/region/
   /// adjacency rules.
-  static CatQueensValidation validate(
+  static TerritoryValidation validate(
     int size,
     List<int> regions,
-    List<CatCellState> board,
+    List<TerritoryCellState> board,
   ) {
-    final catIndices = [
+    final flagIndices = [
       for (var i = 0; i < board.length; i++)
-        if (board[i] == CatCellState.cat) i,
+        if (board[i] == TerritoryCellState.flag) i,
     ];
     final conflicts = <int>{};
-    for (var i = 0; i < catIndices.length; i++) {
-      final a = catIndices[i];
+    for (var i = 0; i < flagIndices.length; i++) {
+      final a = flagIndices[i];
       final ar = a ~/ size;
       final ac = a % size;
-      for (var j = i + 1; j < catIndices.length; j++) {
-        final b = catIndices[j];
+      for (var j = i + 1; j < flagIndices.length; j++) {
+        final b = flagIndices[j];
         final br = b ~/ size;
         final bc = b % size;
         final sameRow = ar == br;
@@ -404,7 +404,7 @@ class CatQueensPuzzle {
         }
       }
     }
-    final solved = catIndices.length == size && conflicts.isEmpty;
-    return CatQueensValidation(conflicts: conflicts, solved: solved);
+    final solved = flagIndices.length == size && conflicts.isEmpty;
+    return TerritoryValidation(conflicts: conflicts, solved: solved);
   }
 }
