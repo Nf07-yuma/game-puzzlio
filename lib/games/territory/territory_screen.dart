@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
-import 'cat_queens_logic.dart';
+import 'territory_logic.dart';
 
 enum _GameMenuAction { resetBoard, resetProgress }
 
@@ -23,36 +23,36 @@ const List<Color> _regionColors = [
   Color(0xFFC94F6D),
 ];
 
-class CatQueensScreen extends StatefulWidget {
-  const CatQueensScreen({super.key});
+class TerritoryScreen extends StatefulWidget {
+  const TerritoryScreen({super.key});
 
   @override
-  State<CatQueensScreen> createState() => _CatQueensScreenState();
+  State<TerritoryScreen> createState() => _TerritoryScreenState();
 }
 
-class _CatQueensScreenState extends State<CatQueensScreen> {
-  static const String _gameId = 'cat_queens';
-  static const String _savedStateId = 'cat_queens_current';
+class _TerritoryScreenState extends State<TerritoryScreen> {
+  static const String _gameId = 'territory_puzzle';
+  static const String _savedStateId = 'territory_puzzle_current';
 
   /// How long after a cell is marked with an X a follow-up tap still turns
-  /// it into a cat. A tap later than this (or on a cat) clears the cell
+  /// it into a flag. A tap later than this (or on a flag) clears the cell
   /// instead.
-  static const Duration _catWindow = Duration(seconds: 3);
+  static const Duration _flagWindow = Duration(seconds: 3);
 
   final Random _random = Random();
 
   int _level = 1;
   int _score = 0;
   int? _bestScore;
-  late CatQueensPuzzle _puzzle;
-  late List<CatCellState> _board;
+  late TerritoryPuzzle _puzzle;
+  late List<TerritoryCellState> _board;
 
   /// When each currently-marked cell became an X, keyed by cell index --
-  /// used to decide whether the next tap on it should place a cat or clear
+  /// used to decide whether the next tap on it should place a flag or clear
   /// it. Cells that aren't marked have no entry.
   final Map<int, DateTime> _markedAt = {};
 
-  CatQueensValidation _validation = const CatQueensValidation(
+  TerritoryValidation _validation = const TerritoryValidation(
     conflicts: {},
     solved: false,
   );
@@ -78,19 +78,19 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
     final solutionColumns = (saved['solutionColumns'] as List).cast<int>();
     final board = (saved['board'] as List)
         .cast<int>()
-        .map((v) => CatCellState.values[v])
+        .map((v) => TerritoryCellState.values[v])
         .toList();
     setState(() {
       _level = saved['level'] as int;
       _score = saved['score'] as int;
-      _puzzle = CatQueensPuzzle(
+      _puzzle = TerritoryPuzzle(
         size: size,
         regions: regions,
         solutionColumns: solutionColumns,
       );
       _board = board;
       _markedAt.clear();
-      _validation = CatQueensPuzzle.validate(size, regions, board);
+      _validation = TerritoryPuzzle.validate(size, regions, board);
     });
   }
 
@@ -106,21 +106,22 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
   }
 
   void _newPuzzleForLevel(int level) {
-    final size = CatQueensPuzzle.sizeForLevel(level);
-    _puzzle = CatQueensPuzzle.generate(_random, size);
-    _board = List<CatCellState>.filled(size * size, CatCellState.empty);
+    final size = TerritoryPuzzle.sizeForLevel(level);
+    _puzzle = TerritoryPuzzle.generate(_random, size);
+    _board =
+        List<TerritoryCellState>.filled(size * size, TerritoryCellState.empty);
     _markedAt.clear();
-    _validation = const CatQueensValidation(conflicts: {}, solved: false);
+    _validation = const TerritoryValidation(conflicts: {}, solved: false);
   }
 
   void _resetBoard() {
     setState(() {
-      _board = List<CatCellState>.filled(
+      _board = List<TerritoryCellState>.filled(
         _puzzle.size * _puzzle.size,
-        CatCellState.empty,
+        TerritoryCellState.empty,
       );
       _markedAt.clear();
-      _validation = const CatQueensValidation(conflicts: {}, solved: false);
+      _validation = const TerritoryValidation(conflicts: {}, solved: false);
     });
     _saveGame();
   }
@@ -136,32 +137,33 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
 
   /// Cycles a cell's state on tap:
   /// - empty -> marked (X)
-  /// - marked -> cat, but only if tapped again within [_catWindow] of being
-  ///   marked; otherwise (or once it's a cat) -> empty.
-  /// - cat -> empty
+  /// - marked -> flag, but only if tapped again within [_flagWindow] of
+  ///   being marked; otherwise (or once it's a flag) -> empty.
+  /// - flag -> empty
   void _tapCell(int index) {
     if (_validation.solved) return;
     final current = _board[index];
-    final CatCellState next;
+    final TerritoryCellState next;
     switch (current) {
-      case CatCellState.empty:
-        next = CatCellState.marked;
-      case CatCellState.marked:
+      case TerritoryCellState.empty:
+        next = TerritoryCellState.marked;
+      case TerritoryCellState.marked:
         final markedAt = _markedAt[index];
         final withinWindow = markedAt != null &&
-            DateTime.now().difference(markedAt) <= _catWindow;
-        next = withinWindow ? CatCellState.cat : CatCellState.empty;
-      case CatCellState.cat:
-        next = CatCellState.empty;
+            DateTime.now().difference(markedAt) <= _flagWindow;
+        next =
+            withinWindow ? TerritoryCellState.flag : TerritoryCellState.empty;
+      case TerritoryCellState.flag:
+        next = TerritoryCellState.empty;
     }
     setState(() {
       _board[index] = next;
-      if (next == CatCellState.marked) {
+      if (next == TerritoryCellState.marked) {
         _markedAt[index] = DateTime.now();
       } else {
         _markedAt.remove(index);
       }
-      _validation = CatQueensPuzzle.validate(
+      _validation = TerritoryPuzzle.validate(
         _puzzle.size,
         _puzzle.regions,
         _board,
@@ -181,16 +183,16 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
 
   /// Marks a single cell with an X while the player drags across the board
   /// without lifting their finger, so a whole row/column can be crossed out
-  /// in one gesture. Cells that already hold a cat are left untouched so a
+  /// in one gesture. Cells that already hold a flag are left untouched so a
   /// stray drag can't wipe out a placed piece.
   void _dragMarkCell(int index) {
     if (_validation.solved) return;
-    if (_board[index] != CatCellState.empty) return;
+    if (_board[index] != TerritoryCellState.empty) return;
     HapticFeedback.selectionClick();
     setState(() {
-      _board[index] = CatCellState.marked;
+      _board[index] = TerritoryCellState.marked;
       _markedAt[index] = DateTime.now();
-      _validation = CatQueensPuzzle.validate(
+      _validation = TerritoryPuzzle.validate(
         _puzzle.size,
         _puzzle.regions,
         _board,
@@ -205,12 +207,12 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
     final rows = List<int>.generate(size, (i) => i)..shuffle(_random);
     for (final row in rows) {
       final targetIndex = row * size + _puzzle.solutionColumns[row];
-      if (_board[targetIndex] != CatCellState.cat) {
+      if (_board[targetIndex] != TerritoryCellState.flag) {
         HapticFeedback.lightImpact();
         setState(() {
-          _board[targetIndex] = CatCellState.cat;
+          _board[targetIndex] = TerritoryCellState.flag;
           _markedAt.remove(targetIndex);
-          _validation = CatQueensPuzzle.validate(size, _puzzle.regions, _board);
+          _validation = TerritoryPuzzle.validate(size, _puzzle.regions, _board);
         });
         if (_validation.solved) {
           _onSolved();
@@ -263,11 +265,12 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final catsPlaced = _board.where((s) => s == CatCellState.cat).length;
+    final flagsPlaced =
+        _board.where((s) => s == TerritoryCellState.flag).length;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ネコクイーンズ'),
+        title: const Text('陣取りパズル'),
         actions: [
           IconButton(
             onPressed: _giveHint,
@@ -331,10 +334,10 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  const Text('🐱', style: TextStyle(fontSize: 20)),
+                  const Text('🚩', style: TextStyle(fontSize: 20)),
                   const SizedBox(width: 6),
                   Text(
-                    '$catsPlaced / ${_puzzle.size}',
+                    '$flagsPlaced / ${_puzzle.size}',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ],
@@ -346,9 +349,9 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                  _RuleChip('1色に1匹'),
-                  _RuleChip('行と列に1匹ずつ'),
-                  _RuleChip('ネコ同士は隣接不可'),
+                  _RuleChip('1色に1本'),
+                  _RuleChip('行と列に1本ずつ'),
+                  _RuleChip('旗同士は隣接不可'),
                 ],
               ),
             ),
@@ -358,7 +361,7 @@ class _CatQueensScreenState extends State<CatQueensScreen> {
                   padding: const EdgeInsets.all(16),
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: _CatQueensGrid(
+                    child: _TerritoryGrid(
                       puzzle: _puzzle,
                       board: _board,
                       conflicts: _validation.conflicts,
@@ -427,9 +430,9 @@ class _RuleChip extends StatelessWidget {
 /// The board grid. A single tap on a cell cycles its state, while pressing
 /// down and dragging across multiple cells without lifting the finger marks
 /// every cell the drag passes over with an X -- handy for quickly crossing
-/// out a row/column after placing a cat.
-class _CatQueensGrid extends StatefulWidget {
-  const _CatQueensGrid({
+/// out a row/column after placing a flag.
+class _TerritoryGrid extends StatefulWidget {
+  const _TerritoryGrid({
     required this.puzzle,
     required this.board,
     required this.conflicts,
@@ -437,17 +440,17 @@ class _CatQueensGrid extends StatefulWidget {
     required this.onDragMark,
   });
 
-  final CatQueensPuzzle puzzle;
-  final List<CatCellState> board;
+  final TerritoryPuzzle puzzle;
+  final List<TerritoryCellState> board;
   final Set<int> conflicts;
   final ValueChanged<int> onTap;
   final ValueChanged<int> onDragMark;
 
   @override
-  State<_CatQueensGrid> createState() => _CatQueensGridState();
+  State<_TerritoryGrid> createState() => _TerritoryGridState();
 }
 
-class _CatQueensGridState extends State<_CatQueensGrid> {
+class _TerritoryGridState extends State<_TerritoryGrid> {
   static const double _outerPadding = 4;
 
   final GlobalKey _boardKey = GlobalKey();
@@ -545,13 +548,13 @@ class _CatQueensGridState extends State<_CatQueensGrid> {
                 ),
                 alignment: Alignment.center,
                 child: switch (state) {
-                  CatCellState.empty => null,
-                  CatCellState.marked => Icon(
+                  TerritoryCellState.empty => null,
+                  TerritoryCellState.marked => Icon(
                       Icons.close_rounded,
                       color: Colors.black.withValues(alpha: 0.55),
                     ),
-                  CatCellState.cat => const Text(
-                      '🐱',
+                  TerritoryCellState.flag => const Text(
+                      '🚩',
                       style: TextStyle(fontSize: 18),
                     ),
                 },
