@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
+import '../../widgets/stat_box.dart';
 import 'sliding_puzzle_logic.dart';
 
 enum _GameMenuAction { restart, newGame }
@@ -233,13 +234,19 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _StatBox(label: '手数', value: '$_moves'),
-                  _StatBox(label: 'タイム', value: _formatTime(_elapsedSeconds)),
-                  _StatBox(
+                  StatBox(label: '手数', value: '$_moves', width: 96),
+                  StatBox(
+                    label: 'タイム',
+                    value: _formatTime(_elapsedSeconds),
+                    width: 96,
+                    accent: true,
+                  ),
+                  StatBox(
                     label: 'ベスト',
                     value: _bestTimeSeconds == null
                         ? '--:--'
                         : _formatTime(_bestTimeSeconds!),
+                    width: 96,
                   ),
                 ],
               ),
@@ -255,42 +262,17 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Text('空きマスの隣のピースをタップ、またはドラッグして動かそう'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Text(
+                '空きマスの隣のピースをタップ、またはドラッグして動かそう',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 96,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
@@ -396,7 +378,17 @@ class _PuzzleGridState extends State<_PuzzleGrid> {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -467,10 +459,10 @@ class _PuzzlePiece extends StatelessWidget {
         color: movable
             ? colorScheme.primary
             : colorScheme.primary.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           child: Center(
             child: Text(
               '$value',

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
+import '../../widgets/stat_box.dart';
 import 'sudoku_logic.dart';
 
 enum _GameMenuAction { restart, newGame }
@@ -300,9 +301,13 @@ class _SudokuScreenState extends State<SudokuScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _StatBox(label: '難易度', value: _difficulty.label),
-                  _StatBox(label: 'タイム', value: _formatTime(_elapsedSeconds)),
-                  _StatBox(
+                  StatBox(label: '難易度', value: _difficulty.label),
+                  StatBox(
+                    label: 'タイム',
+                    value: _formatTime(_elapsedSeconds),
+                    accent: true,
+                  ),
+                  StatBox(
                     label: 'ベスト',
                     value: _bestTimeSeconds == null
                         ? '--:--'
@@ -339,36 +344,6 @@ class _SudokuScreenState extends State<SudokuScreen> {
   }
 }
 
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SudokuGrid extends StatelessWidget {
   const _SudokuGrid({
     required this.puzzle,
@@ -394,90 +369,105 @@ class _SudokuGrid extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: colorScheme.outline, width: 2),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 9,
-        ),
-        itemCount: 81,
-        itemBuilder: (context, index) {
-          final row = index ~/ 9;
-          final col = index % 9;
-          final value = grid[index];
-          final isGiven = puzzle.isGiven(index);
-          final isSelected = index == selectedIndex;
-          final isConflict = conflicts.contains(index);
-          final isSameValue = selectedValue != null &&
-              selectedValue != 0 &&
-              value == selectedValue;
-          final isRowOrCol = !isSelected &&
-              selectedIndex != null &&
-              (row == selectedRow || col == selectedCol);
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: colorScheme.outline, width: 2),
+          ),
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 9,
+            ),
+            itemCount: 81,
+            itemBuilder: (context, index) {
+              final row = index ~/ 9;
+              final col = index % 9;
+              final value = grid[index];
+              final isGiven = puzzle.isGiven(index);
+              final isSelected = index == selectedIndex;
+              final isConflict = conflicts.contains(index);
+              final isSameValue = selectedValue != null &&
+                  selectedValue != 0 &&
+                  value == selectedValue;
+              final isRowOrCol = !isSelected &&
+                  selectedIndex != null &&
+                  (row == selectedRow || col == selectedCol);
 
-          Color background;
-          if (isSelected) {
-            background = colorScheme.primary;
-          } else if (isSameValue) {
-            background = colorScheme.tertiary.withValues(
-              alpha: isDark ? 0.35 : 0.40,
-            );
-          } else if (isRowOrCol) {
-            background = colorScheme.outline.withValues(
-              alpha: isDark ? 0.14 : 0.12,
-            );
-          } else if ((row ~/ 3 + col ~/ 3).isEven) {
-            background = colorScheme.surfaceContainerHighest;
-          } else {
-            background = colorScheme.surface;
-          }
+              Color background;
+              if (isSelected) {
+                background = colorScheme.primary;
+              } else if (isSameValue) {
+                background = colorScheme.tertiary.withValues(
+                  alpha: isDark ? 0.35 : 0.40,
+                );
+              } else if (isRowOrCol) {
+                background = colorScheme.outline.withValues(
+                  alpha: isDark ? 0.14 : 0.12,
+                );
+              } else if ((row ~/ 3 + col ~/ 3).isEven) {
+                background = colorScheme.surfaceContainerHighest;
+              } else {
+                background = colorScheme.surface;
+              }
 
-          return GestureDetector(
-            onTap: () => onTap(index),
-            child: Container(
-              decoration: BoxDecoration(
-                color: background,
-                border: Border(
-                  top: BorderSide(
-                    color: colorScheme.outline,
-                    width: row % 3 == 0 ? 1.5 : 0.3,
-                  ),
-                  left: BorderSide(
-                    color: colorScheme.outline,
-                    width: col % 3 == 0 ? 1.5 : 0.3,
-                  ),
-                  right: BorderSide(
-                    color: colorScheme.outline,
-                    width: col == 8 ? 1.5 : 0.3,
-                  ),
-                  bottom: BorderSide(
-                    color: colorScheme.outline,
-                    width: row == 8 ? 1.5 : 0.3,
-                  ),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: value == 0
-                  ? null
-                  : Text(
-                      '$value',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight:
-                            isGiven ? FontWeight.bold : FontWeight.normal,
-                        color: isConflict
-                            ? colorScheme.error
-                            : isSelected
-                                ? colorScheme.onPrimary
-                                : isGiven
-                                    ? colorScheme.onSurface
-                                    : colorScheme.primary,
+              return GestureDetector(
+                onTap: () => onTap(index),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: background,
+                    border: Border(
+                      top: BorderSide(
+                        color: colorScheme.outline,
+                        width: row % 3 == 0 ? 1.5 : 0.3,
+                      ),
+                      left: BorderSide(
+                        color: colorScheme.outline,
+                        width: col % 3 == 0 ? 1.5 : 0.3,
+                      ),
+                      right: BorderSide(
+                        color: colorScheme.outline,
+                        width: col == 8 ? 1.5 : 0.3,
+                      ),
+                      bottom: BorderSide(
+                        color: colorScheme.outline,
+                        width: row == 8 ? 1.5 : 0.3,
                       ),
                     ),
-            ),
-          );
-        },
+                  ),
+                  alignment: Alignment.center,
+                  child: value == 0
+                      ? null
+                      : Text(
+                          '$value',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight:
+                                isGiven ? FontWeight.bold : FontWeight.normal,
+                            color: isConflict
+                                ? colorScheme.error
+                                : isSelected
+                                    ? colorScheme.onPrimary
+                                    : isGiven
+                                        ? colorScheme.onSurface
+                                        : colorScheme.primary,
+                          ),
+                        ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -520,21 +510,22 @@ class _PadButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
       color: colorScheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(14),
         child: SizedBox(
           width: 44,
           height: 44,
           child: Center(
             child: icon != null
-                ? Icon(icon, size: 20)
+                ? Icon(icon, size: 20, color: colorScheme.onSurfaceVariant)
                 : Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.primary,
                     ),
                   ),
           ),

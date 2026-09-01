@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
+import '../../widgets/stat_box.dart';
 import 'territory_logic.dart';
 
 enum _GameMenuAction { resetBoard, resetProgress }
@@ -321,9 +322,9 @@ class _TerritoryScreenState extends State<TerritoryScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _StatBox(label: 'レベル', value: '$_level'),
-                  _StatBox(label: 'スコア', value: '$_score'),
-                  _StatBox(
+                  StatBox(label: 'レベル', value: '$_level'),
+                  StatBox(label: 'スコア', value: '$_score', accent: true),
+                  StatBox(
                     label: 'ベスト',
                     value: _bestScore == null ? '--' : '$_bestScore',
                   ),
@@ -331,14 +332,19 @@ class _TerritoryScreenState extends State<TerritoryScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
               child: Row(
                 children: [
-                  const Text('🚩', style: TextStyle(fontSize: 20)),
+                  const Text('🚩', style: TextStyle(fontSize: 18)),
                   const SizedBox(width: 6),
                   Text(
                     '$flagsPlaced / ${_puzzle.size}',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(
+                      context,
+                    )
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -379,36 +385,6 @@ class _TerritoryScreenState extends State<TerritoryScreen> {
   }
 }
 
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _RuleChip extends StatelessWidget {
   const _RuleChip(this.label);
 
@@ -416,13 +392,22 @@ class _RuleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        color: colorScheme.primaryContainer.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
+      ),
     );
   }
 }
@@ -521,7 +506,17 @@ class _TerritoryGridState extends State<_TerritoryGrid> {
         key: _boardKey,
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         padding: const EdgeInsets.all(_outerPadding),
         child: GridView.builder(
@@ -541,7 +536,7 @@ class _TerritoryGridState extends State<_TerritoryGrid> {
               child: Container(
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                   border: isConflict
                       ? Border.all(color: colorScheme.error, width: 2)
                       : null,
