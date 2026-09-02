@@ -24,8 +24,11 @@ flutter analyze       # 静的解析
 
 ### Android
 
+アプリケーションID(iOSのBundle IDも同様)は `com.oinaritech.puzzlio` です。
+
 ```bash
-flutter build apk --release
+flutter build apk --release        # 実機への直接インストール確認用
+flutter build appbundle --release  # Play Store 提出用 (.aab)
 ```
 
 ### iOS
@@ -74,8 +77,8 @@ keytool -genkeypair -v \
 | `ANDROID_KEY_ALIAS` | 鍵のエイリアス（例: `upload`） |
 | `ANDROID_KEY_PASSWORD` | 鍵のパスワード (`keyPassword`) |
 
-これらが設定されていれば、`.github/workflows/ci.yml` の `build-apk` ジョブが自動的に
-署名付き APK をビルドします（未設定の場合は自動的にデバッグ署名にフォールバックし、
+これらが設定されていれば、`.github/workflows/ci.yml` の `build-android` ジョブが自動的に
+署名付き APK / AAB をビルドします（未設定の場合は自動的にデバッグ署名にフォールバックし、
 ビルド自体は失敗しません）。fork からの pull request はシークレットにアクセスできないため、
 常にデバッグ署名でビルドされます。
 

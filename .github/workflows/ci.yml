@@ -47,8 +47,8 @@ jobs:
       - name: テスト実行 (flutter test)
         run: flutter test
 
-  build-apk:
-    name: APKビルド
+  build-android:
+    name: APK/AABビルド
     needs: test
     runs-on: ubuntu-latest
     env:
@@ -98,4 +98,16 @@ jobs:
         with:
           name: puzzlio-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+
+      # Play Store への提出には .aab (Android App Bundle) が必須。
+      # APKは実機への直接インストール確認用に別途残している。
+      - name: リリースAABビルド
+        run: flutter build appbundle --release
+
+      - name: AABアーティファクトのアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: puzzlio-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 14
