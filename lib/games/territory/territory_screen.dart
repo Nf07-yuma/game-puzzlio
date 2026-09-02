@@ -41,6 +41,9 @@ class _TerritoryScreenState extends State<TerritoryScreen> {
   /// instead.
   static const Duration _flagWindow = Duration(seconds: 3);
 
+  /// Points deducted from the score each time a hint places a flag.
+  static const int _hintPenalty = 20;
+
   final Random _random = Random();
 
   int _level = 1;
@@ -214,6 +217,7 @@ class _TerritoryScreenState extends State<TerritoryScreen> {
         setState(() {
           _board[targetIndex] = TerritoryCellState.flag;
           _markedAt.remove(targetIndex);
+          _score = max(0, _score - _hintPenalty);
           _validation = TerritoryPuzzle.validate(size, _puzzle.regions, _board);
         });
         if (_validation.solved) {
