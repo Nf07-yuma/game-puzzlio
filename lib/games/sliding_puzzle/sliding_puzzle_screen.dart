@@ -3,9 +3,12 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
+import '../../theme/game_colors.dart';
+import '../../widgets/stat_box.dart';
 import 'sliding_puzzle_logic.dart';
 
 enum _GameMenuAction { restart, newGame }
@@ -233,13 +236,19 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _StatBox(label: '手数', value: '$_moves'),
-                  _StatBox(label: 'タイム', value: _formatTime(_elapsedSeconds)),
-                  _StatBox(
+                  StatBox(label: '手数', value: '$_moves', width: 90),
+                  StatBox(
+                    label: 'タイム',
+                    value: _formatTime(_elapsedSeconds),
+                    width: 90,
+                    accentColor: GameColors.hanada,
+                  ),
+                  StatBox(
                     label: 'ベスト',
                     value: _bestTimeSeconds == null
                         ? '--:--'
                         : _formatTime(_bestTimeSeconds!),
+                    width: 90,
                   ),
                 ],
               ),
@@ -255,42 +264,17 @@ class _SlidingPuzzleScreenState extends State<SlidingPuzzleScreen> {
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Text('空きマスの隣のピースをタップ、またはドラッグして動かそう'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                '空きマスの隣のピースをタップ、またはドラッグして動かそう',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 96,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
@@ -393,10 +377,11 @@ class _PuzzleGridState extends State<_PuzzleGrid> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -459,24 +444,23 @@ class _PuzzlePiece extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
       child: Material(
         color: movable
-            ? colorScheme.primary
-            : colorScheme.primary.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(8),
+            ? GameColors.hanada
+            : GameColors.hanada.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           child: Center(
             child: Text(
               '$value',
-              style: TextStyle(
-                color: colorScheme.onPrimary,
-                fontWeight: FontWeight.bold,
+              style: GoogleFonts.ibmPlexMono(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
                 fontSize: 22,
               ),
             ),

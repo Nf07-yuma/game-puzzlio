@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:puzzlio/app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() {
+    // Don't let google_fonts try to fetch fonts over the network in tests.
+    GoogleFonts.config.allowRuntimeFetching = false;
     SharedPreferences.setMockInitialValues({});
   });
 

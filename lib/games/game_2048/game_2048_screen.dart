@@ -2,9 +2,12 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/game_state_storage.dart';
 import '../../services/score_service.dart';
+import '../../theme/game_colors.dart';
+import '../../widgets/stat_box.dart';
 import 'game_2048_logic.dart';
 import 'game_2048_tile_animation.dart';
 
@@ -278,8 +281,14 @@ class _Game2048ScreenState extends State<Game2048Screen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _ScoreBox(label: 'スコア', value: '$_score'),
-                  _ScoreBox(label: 'ベスト', value: '${_bestScore ?? 0}'),
+                  StatBox(
+                    label: 'スコア',
+                    value: '$_score',
+                    width: 120,
+                    accentColor: GameColors.yamabuki,
+                  ),
+                  StatBox(
+                      label: 'ベスト', value: '${_bestScore ?? 0}', width: 120),
                 ],
               ),
             ),
@@ -310,42 +319,17 @@ class _Game2048ScreenState extends State<Game2048Screen> {
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Text('上下左右にスワイプしてタイルを動かそう'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                '上下左右にスワイプしてタイルを動かそう',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ScoreBox extends StatelessWidget {
-  const _ScoreBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 120,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
@@ -361,10 +345,10 @@ class _Board2048View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFFBBADA0),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -449,10 +433,10 @@ class _Tile extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         '$value',
-        style: TextStyle(
+        style: GoogleFonts.ibmPlexMono(
           color: _textColor(),
-          fontWeight: FontWeight.bold,
-          fontSize: value >= 1024 ? 22 : 26,
+          fontWeight: FontWeight.w700,
+          fontSize: value >= 1024 ? 20 : 24,
         ),
       ),
     );

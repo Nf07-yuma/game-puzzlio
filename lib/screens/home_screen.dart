@@ -5,7 +5,10 @@ import '../games/sliding_puzzle/sliding_puzzle_screen.dart';
 import '../games/sudoku/sudoku_screen.dart';
 import '../games/territory/territory_screen.dart';
 import '../models/puzzle_game.dart';
+import '../theme/game_colors.dart';
+import '../widgets/app_mark.dart';
 import '../widgets/game_card.dart';
+import '../widgets/puzzle_badge.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -15,32 +18,32 @@ class HomeScreen extends StatelessWidget {
       id: '2048',
       title: '2048',
       description: 'タイルをスライドして数字を合成しよう',
-      icon: Icons.grid_view_rounded,
-      color: const Color(0xFFEDA13A),
+      glyph: PuzzleBadgeGlyph.tiles2048,
+      color: GameColors.yamabuki,
       builder: (context) => const Game2048Screen(),
     ),
     PuzzleGame(
       id: 'sliding_puzzle',
       title: 'スライドパズル',
       description: '15個のピースを並べ替えて絵を完成させよう',
-      icon: Icons.extension_rounded,
-      color: const Color(0xFF3AA1ED),
+      glyph: PuzzleBadgeGlyph.slidingGrid,
+      color: GameColors.hanada,
       builder: (context) => const SlidingPuzzleScreen(),
     ),
     PuzzleGame(
       id: 'sudoku',
       title: '数独',
       description: '9x9の盤面を数字で埋めるロジックパズル',
-      icon: Icons.apps_rounded,
-      color: const Color(0xFF3AED8C),
+      glyph: PuzzleBadgeGlyph.sudokuGrid,
+      color: GameColors.wakakusa,
       builder: (context) => const SudokuScreen(),
     ),
     PuzzleGame(
       id: 'territory_puzzle',
       title: '陣取りパズル',
       description: '色エリアに1本ずつ、隣接しないように旗を配置しよう',
-      icon: Icons.flag_rounded,
-      color: const Color(0xFFE87FAE),
+      glyph: PuzzleBadgeGlyph.flag,
+      color: GameColors.sango,
       builder: (context) => const TerritoryScreen(),
     ),
   ];
@@ -52,25 +55,30 @@ class HomeScreen extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
               sliver: SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      'Puzzlio',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '好きなパズルを選んで遊ぼう',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                    const AppMark(size: 40),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Puzzlio',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '好きなパズルを選んで遊ぼう',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -78,21 +86,18 @@ class HomeScreen extends StatelessWidget {
             ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverList.separated(
-                itemCount: games.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final game = games[index];
-                  return GameCard(
-                    game: game,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: game.builder),
-                      );
-                    },
-                  );
-                },
+              sliver: SliverList.list(
+                children: [
+                  for (final game in games)
+                    GameCard(
+                      game: game,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: game.builder),
+                        );
+                      },
+                    ),
+                ],
               ),
             ),
             const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
