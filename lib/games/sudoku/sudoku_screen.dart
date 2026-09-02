@@ -472,17 +472,32 @@ class _NumberPad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 8,
-      runSpacing: 8,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (var value = 1; value <= 9; value++)
-          _PadButton(label: '$value', onTap: () => onInput(value)),
-        _PadButton(
-          label: '',
-          icon: Icons.backspace_outlined,
-          onTap: onErase,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var value = 1; value <= 5; value++) ...[
+              _PadButton(label: '$value', onTap: () => onInput(value)),
+              if (value != 5) const SizedBox(width: 8),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var value = 6; value <= 9; value++) ...[
+              _PadButton(label: '$value', onTap: () => onInput(value)),
+              const SizedBox(width: 8),
+            ],
+            _PadButton(
+              label: '',
+              icon: Icons.backspace_outlined,
+              onTap: onErase,
+            ),
+          ],
         ),
       ],
     );
